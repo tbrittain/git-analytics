@@ -1,6 +1,6 @@
 module git-analytics
 
-go 1.23
+go 1.25
 
 require github.com/wailsapp/wails/v2 v2.10.1
 
