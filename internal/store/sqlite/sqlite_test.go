@@ -1,4 +1,4 @@
-package duckdb_test
+package sqlite_test
 
 import (
 	"path/filepath"
@@ -6,13 +6,13 @@ import (
 	"time"
 
 	"git-analytics/internal/git"
-	duckdbstore "git-analytics/internal/store/duckdb"
+	sqlitestore "git-analytics/internal/store/sqlite"
 )
 
 func TestInitAndInsert(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test.db")
 
-	s, err := duckdbstore.Open(dbPath)
+	s, err := sqlitestore.Open(dbPath)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -59,7 +59,7 @@ func TestInitAndInsert(t *testing.T) {
 func TestIndexState(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test.db")
 
-	s, err := duckdbstore.Open(dbPath)
+	s, err := sqlitestore.Open(dbPath)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -108,7 +108,7 @@ func TestIndexState(t *testing.T) {
 func TestInitIdempotent(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test.db")
 
-	s, err := duckdbstore.Open(dbPath)
+	s, err := sqlitestore.Open(dbPath)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}

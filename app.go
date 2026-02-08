@@ -9,7 +9,7 @@ import (
 	"git-analytics/internal/git"
 	"git-analytics/internal/indexer"
 	"git-analytics/internal/store"
-	duckdbstore "git-analytics/internal/store/duckdb"
+	sqlitestore "git-analytics/internal/store/sqlite"
 )
 
 // App struct
@@ -59,7 +59,7 @@ func (a *App) OpenRepository(path string) error {
 	}
 
 	dbPath := filepath.Join(path, ".git-analytics.db")
-	s, err := duckdbstore.Open(dbPath)
+	s, err := sqlitestore.Open(dbPath)
 	if err != nil {
 		repo.Close()
 		return fmt.Errorf("opening database: %w", err)

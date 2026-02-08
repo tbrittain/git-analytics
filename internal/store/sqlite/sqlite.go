@@ -1,34 +1,39 @@
-package duckdb
+package sqlite
 
 import (
 	"database/sql"
 
-	_ "github.com/duckdb/duckdb-go/v2"
+	_ "modernc.org/sqlite"
 
 	"git-analytics/internal/git"
 	"git-analytics/internal/store"
 )
 
-// duckDBStore implements store.Store using DuckDB.
-type duckDBStore struct {
+// sqliteStore implements store.Store using SQLite.
+type sqliteStore struct {
 	db *sql.DB
 }
 
-// Open opens or creates a DuckDB database at the given path.
+// Open opens or creates a SQLite database at the given path.
 func Open(dbPath string) (store.Store, error) {
-	db, err := sql.Open("duckdb", dbPath)
+	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return nil, err
 	}
-	return &duckDBStore{db: db}, nil
+	// WAL mode for better concurrent read performance.
+	if _, err := db.Exec("PRAGMA journal_mode=WAL"); err != nil {
+		db.Close()
+		return nil, err
+	}
+	return &sqliteStore{db: db}, nil
 }
 
-func (s *duckDBStore) Init() error {
+func (s *sqliteStore) Init() error {
 	_, err := s.db.Exec(store.SchemaSQL)
 	return err
 }
 
-func (s *duckDBStore) InsertCommits(commits []git.Commit) error {
+func (s *sqliteStore) InsertCommits(commits []git.Commit) error {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return err
@@ -67,7 +72,7 @@ func (s *duckDBStore) InsertCommits(commits []git.Commit) error {
 	return tx.Commit()
 }
 
-func (s *duckDBStore) GetLastIndexedCommit() (string, error) {
+func (s *sqliteStore) GetLastIndexedCommit() (string, error) {
 	var hash string
 	err := s.db.QueryRow(
 		`SELECT value FROM index_state WHERE key = 'last_indexed_commit'`).Scan(&hash)
@@ -77,13 +82,13 @@ func (s *duckDBStore) GetLastIndexedCommit() (string, error) {
 	return hash, err
 }
 
-func (s *duckDBStore) SetLastIndexedCommit(hash string) error {
+func (s *sqliteStore) SetLastIndexedCommit(hash string) error {
 	_, err := s.db.Exec(
 		`INSERT OR REPLACE INTO index_state (key, value)
 		 VALUES ('last_indexed_commit', ?)`, hash)
 	return err
 }
 
-func (s *duckDBStore) Close() error {
+func (s *sqliteStore) Close() error {
 	return s.db.Close()
 }

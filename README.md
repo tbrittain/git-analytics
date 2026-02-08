@@ -7,6 +7,12 @@ This is the official Wails Vue-TS template.
 You can configure the project by editing `wails.json`. More information about the project settings can be found
 here: https://wails.io/docs/reference/project-config
 
+## Prerequisites
+- Go 1.25
+- Node 24
+- Wails 2.x
+- A CGO capable C compiler (e.g. GCC, Clang) and `CGO_ENABLED=1`
+
 ## Live Development
 
 To run in live development mode, run `wails dev` in the project directory. This will run a Vite development
