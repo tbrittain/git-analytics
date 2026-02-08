@@ -197,7 +197,7 @@ onMounted(async () => {
 
 .month-labels {
   display: grid;
-  grid-auto-columns: 16px;
+  grid-auto-columns: 13px;
   gap: 3px;
   height: 17px;
   margin-bottom: 3px;
