@@ -11,7 +11,6 @@ here: https://wails.io/docs/reference/project-config
 - Go 1.25
 - Node 24
 - Wails 2.x
-- A CGO capable C compiler (e.g. GCC, Clang) and `CGO_ENABLED=1`
 
 ## Live Development
 
