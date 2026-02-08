@@ -2,12 +2,17 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
+
+	_ "modernc.org/sqlite"
 
 	"git-analytics/internal/git"
 	"git-analytics/internal/indexer"
+	"git-analytics/internal/query"
 	"git-analytics/internal/store"
 	sqlitestore "git-analytics/internal/store/sqlite"
 )
@@ -17,6 +22,7 @@ type App struct {
 	ctx   context.Context
 	repo  git.Repository
 	store store.Store
+	db    *sql.DB
 }
 
 // NewApp creates a new App application struct
@@ -38,6 +44,9 @@ func (a *App) shutdown(ctx context.Context) {
 	if a.store != nil {
 		a.store.Close()
 	}
+	if a.db != nil {
+		a.db.Close()
+	}
 }
 
 // OpenRepository opens a git repository at the given path, initializes the
@@ -52,6 +61,10 @@ func (a *App) OpenRepository(path string) error {
 		a.store.Close()
 		a.store = nil
 	}
+	if a.db != nil {
+		a.db.Close()
+		a.db = nil
+	}
 
 	repo, err := git.Open(path)
 	if err != nil {
@@ -59,26 +72,33 @@ func (a *App) OpenRepository(path string) error {
 	}
 
 	dbPath := filepath.Join(path, ".git-analytics.db")
-	s, err := sqlitestore.Open(dbPath)
+	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		repo.Close()
 		return fmt.Errorf("opening database: %w", err)
 	}
+	if _, err := db.Exec("PRAGMA journal_mode=WAL"); err != nil {
+		repo.Close()
+		db.Close()
+		return fmt.Errorf("setting WAL mode: %w", err)
+	}
 
+	s := sqlitestore.NewFromDB(db)
 	if err := s.Init(); err != nil {
 		repo.Close()
-		s.Close()
+		db.Close()
 		return fmt.Errorf("initializing schema: %w", err)
 	}
 
 	if err := addToGitExclude(path, ".git-analytics.db"); err != nil {
 		repo.Close()
-		s.Close()
+		db.Close()
 		return fmt.Errorf("updating git exclude: %w", err)
 	}
 
 	a.repo = repo
 	a.store = s
+	a.db = db
 
 	idx := indexer.New(repo, s)
 	if err := idx.Index(); err != nil {
@@ -86,6 +106,26 @@ func (a *App) OpenRepository(path string) error {
 	}
 
 	return nil
+}
+
+// CommitHeatmap returns per-day commit counts between the given dates.
+// Dates should be in "2006-01-02" format. An empty email returns counts for
+// all authors.
+func (a *App) CommitHeatmap(fromDate, toDate, email string) ([]query.HeatmapDay, error) {
+	if a.db == nil {
+		return nil, fmt.Errorf("no repository open")
+	}
+
+	from, err := time.Parse("2006-01-02", fromDate)
+	if err != nil {
+		return nil, fmt.Errorf("parsing from date: %w", err)
+	}
+	to, err := time.Parse("2006-01-02", toDate)
+	if err != nil {
+		return nil, fmt.Errorf("parsing to date: %w", err)
+	}
+
+	return query.CommitHeatmap(a.db, from, to, email)
 }
 
 // addToGitExclude adds a pattern to .git/info/exclude if it's not already present.

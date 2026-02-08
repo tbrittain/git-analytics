@@ -11,7 +11,8 @@ import (
 
 // sqliteStore implements store.Store using SQLite.
 type sqliteStore struct {
-	db *sql.DB
+	db     *sql.DB
+	ownsDB bool
 }
 
 // Open opens or creates a SQLite database at the given path.
@@ -25,7 +26,13 @@ func Open(dbPath string) (store.Store, error) {
 		db.Close()
 		return nil, err
 	}
-	return &sqliteStore{db: db}, nil
+	return &sqliteStore{db: db, ownsDB: true}, nil
+}
+
+// NewFromDB wraps an externally-owned *sql.DB. Close() is a no-op since the
+// caller retains ownership of the database connection.
+func NewFromDB(db *sql.DB) store.Store {
+	return &sqliteStore{db: db, ownsDB: false}
 }
 
 func (s *sqliteStore) Init() error {
@@ -90,5 +97,8 @@ func (s *sqliteStore) SetLastIndexedCommit(hash string) error {
 }
 
 func (s *sqliteStore) Close() error {
-	return s.db.Close()
+	if s.ownsDB {
+		return s.db.Close()
+	}
+	return nil
 }
