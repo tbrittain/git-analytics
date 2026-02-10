@@ -10,20 +10,20 @@ import { FileHotspots } from '../../wailsjs/go/main/App'
 
 use([TreemapChart, TooltipComponent, CanvasRenderer])
 
-interface TreePathEntry {
+type TreePathEntry = {
   name: string
   dataIndex: number
   value: number | number[]
 }
 
-interface TreemapFormatterParams {
+type TreemapFormatterParams = {
   name: string
   value: number | number[]
   treePathInfo?: TreePathEntry[]
   treeAncestors?: TreePathEntry[]
 }
 
-interface Preset {
+type Preset = {
   label: string
   days: number | null // null = all time
 }
@@ -48,13 +48,13 @@ function formatDate(d: Date): string {
   return `${y}-${m}-${day}`
 }
 
-interface TreeNode {
+type TreeNode = {
   name: string
   value?: number
   children?: TreeNode[]
 }
 
-interface NodeStats {
+type NodeStats = {
   lines: number
   additions: number
   deletions: number
