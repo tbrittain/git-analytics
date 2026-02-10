@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ref } from 'vue'
-import { SelectDirectory, OpenRepository } from '../wailsjs/go/main/App'
+import { OpenRepository, SelectDirectory } from '../wailsjs/go/main/App'
 import RepoSelector from './components/RepoSelector.vue'
 
 const repoPath = ref('')
@@ -20,8 +20,8 @@ async function onSelectRepo() {
   try {
     await OpenRepository(path)
     repoReady.value = true
-  } catch (e: any) {
-    error.value = e?.message || String(e)
+  } catch (e: unknown) {
+    error.value = e instanceof Error ? e.message : String(e)
   } finally {
     loading.value = false
   }

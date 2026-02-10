@@ -1,13 +1,27 @@
 <script lang="ts" setup>
-import { ref, onMounted, watch } from 'vue'
-import { use } from 'echarts/core'
+import type { EChartsOption } from 'echarts'
 import { TreemapChart } from 'echarts/charts'
 import { TooltipComponent } from 'echarts/components'
+import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
+import { onMounted, ref, watch } from 'vue'
 import VChart from 'vue-echarts'
 import { FileHotspots } from '../../wailsjs/go/main/App'
 
 use([TreemapChart, TooltipComponent, CanvasRenderer])
+
+interface TreePathEntry {
+  name: string
+  dataIndex: number
+  value: number | number[]
+}
+
+interface TreemapFormatterParams {
+  name: string
+  value: number | number[]
+  treePathInfo?: TreePathEntry[]
+  treeAncestors?: TreePathEntry[]
+}
 
 interface Preset {
   label: string
@@ -25,7 +39,7 @@ const presets: Preset[] = [
 const activePreset = ref(2) // default 6mo
 const loading = ref(false)
 const error = ref('')
-const chartOption = ref<any>(null)
+const chartOption = ref<EChartsOption | null>(null)
 
 function formatDate(d: Date): string {
   const y = d.getFullYear()
@@ -50,7 +64,7 @@ interface NodeStats {
 // Build tree for ECharts (value = lines_changed for sizing) and a side-channel
 // stats map keyed by full path for the tooltip.
 function buildTree(
-  items: { path: string; lines_changed: number; additions: number; deletions: number; commits: number }[]
+  items: { path: string; lines_changed: number; additions: number; deletions: number; commits: number }[],
 ): { tree: TreeNode[]; stats: Map<string, NodeStats> } {
   const root: TreeNode = { name: '/', children: [] }
   const stats = new Map<string, NodeStats>()
@@ -63,7 +77,7 @@ function buildTree(
       const part = parts[i]
       if (!current.children) current.children = []
 
-      let child = current.children.find(c => c.name === part)
+      let child = current.children.find((c) => c.name === part)
       if (!child) {
         child = { name: part, children: [] }
         current.children.push(child)
@@ -90,10 +104,16 @@ function buildTree(
       const key = pathParts.join('/')
       return stats.get(key) || { lines: 0, additions: 0, deletions: 0, commits: 0 }
     }
-    let lines = 0, adds = 0, dels = 0, commits = 0
+    let lines = 0,
+      adds = 0,
+      dels = 0,
+      commits = 0
     for (const child of node.children) {
       const s = aggregate(child, [...pathParts, child.name])
-      lines += s.lines; adds += s.additions; dels += s.deletions; commits += s.commits
+      lines += s.lines
+      adds += s.additions
+      dels += s.deletions
+      commits += s.commits
     }
     node.value = lines
     const key = pathParts.join('/')
@@ -135,22 +155,25 @@ async function fetchData() {
 
     chartOption.value = {
       tooltip: {
-        formatter(info: any) {
-          const treePath = info.treePathInfo || []
+        formatter(params) {
+          const info = params as TreemapFormatterParams
+          const treePath = info.treePathInfo ?? []
           const fullPath = treePath
             .slice(1)
-            .map((n: any) => n.name)
+            .map((n: TreePathEntry) => n.name)
             .join('/')
           const s = stats.get(fullPath)
           const lines = s ? s.lines.toLocaleString() : '—'
           const adds = s ? s.additions.toLocaleString() : '—'
           const dels = s ? s.deletions.toLocaleString() : '—'
           const commits = s ? s.commits.toLocaleString() : '—'
-          return `<b>${fullPath || info.name}</b><br/>` +
+          return (
+            `<b>${fullPath || info.name}</b><br/>` +
             `Lines changed: ${lines}<br/>` +
             `<span style="color:#3fb950">+${adds}</span>` +
             ` / <span style="color:#f85149">-${dels}</span><br/>` +
             `Commits: ${commits}`
+          )
         },
       },
       series: [
@@ -219,8 +242,8 @@ async function fetchData() {
         },
       ],
     }
-  } catch (e: any) {
-    error.value = e?.message || String(e)
+  } catch (e: unknown) {
+    error.value = e instanceof Error ? e.message : String(e)
   } finally {
     loading.value = false
   }
