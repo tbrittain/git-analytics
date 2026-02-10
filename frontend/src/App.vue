@@ -114,6 +114,9 @@ main {
   flex: 1;
   overflow: auto;
   padding: 20px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .status {
