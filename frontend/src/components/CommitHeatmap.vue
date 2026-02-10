@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import { CommitHeatmap } from '../../wailsjs/go/main/App'
 
 const cells = ref<{ date: string; count: number; dayOfWeek: number }[]>([])
@@ -36,7 +36,6 @@ onMounted(async () => {
       from.setDate(from.getDate() - startDow)
     }
 
-    const toStr = formatDate(to)
     // Add one day to `to` since backend uses exclusive end
     const toExclusive = new Date(to)
     toExclusive.setDate(toExclusive.getDate() + 1)
@@ -85,8 +84,8 @@ onMounted(async () => {
 
     cells.value = allCells
     months.value = monthMarkers
-  } catch (e: any) {
-    error.value = e?.message || String(e)
+  } catch (e: unknown) {
+    error.value = e instanceof Error ? e.message : String(e)
   }
 })
 </script>
