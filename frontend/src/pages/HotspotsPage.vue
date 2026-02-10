@@ -37,16 +37,25 @@ function formatDate(d: Date): string {
 interface TreeNode {
   name: string
   value?: number
-  commits?: number
-  fullPath?: string
   children?: TreeNode[]
 }
 
-function buildTree(items: { path: string; lines_changed: number; commits: number }[]): TreeNode[] {
+interface NodeStats {
+  lines: number
+  additions: number
+  deletions: number
+  commits: number
+}
+
+// Build tree for ECharts (value = lines_changed for sizing) and a side-channel
+// stats map keyed by full path for the tooltip.
+function buildTree(
+  items: { path: string; lines_changed: number; additions: number; deletions: number; commits: number }[]
+): { tree: TreeNode[]; stats: Map<string, NodeStats> } {
   const root: TreeNode = { name: '/', children: [] }
+  const stats = new Map<string, NodeStats>()
 
   for (const item of items) {
-    // Normalize backslashes to forward slashes
     const parts = item.path.replace(/\\/g, '/').split('/')
     let current = root
 
@@ -61,10 +70,13 @@ function buildTree(items: { path: string; lines_changed: number; commits: number
       }
 
       if (i === parts.length - 1) {
-        // Leaf node
         child.value = item.lines_changed
-        child.commits = item.commits
-        child.fullPath = item.path
+        stats.set(item.path, {
+          lines: item.lines_changed,
+          additions: item.additions,
+          deletions: item.deletions,
+          commits: item.commits,
+        })
         delete child.children
       }
 
@@ -72,7 +84,26 @@ function buildTree(items: { path: string; lines_changed: number; commits: number
     }
   }
 
-  return root.children || []
+  // Roll up stats for directory nodes and set value for sizing.
+  function aggregate(node: TreeNode, pathParts: string[]): NodeStats {
+    if (!node.children || node.children.length === 0) {
+      const key = pathParts.join('/')
+      return stats.get(key) || { lines: 0, additions: 0, deletions: 0, commits: 0 }
+    }
+    let lines = 0, adds = 0, dels = 0, commits = 0
+    for (const child of node.children) {
+      const s = aggregate(child, [...pathParts, child.name])
+      lines += s.lines; adds += s.additions; dels += s.deletions; commits += s.commits
+    }
+    node.value = lines
+    const key = pathParts.join('/')
+    const dirStats = { lines, additions: adds, deletions: dels, commits }
+    stats.set(key, dirStats)
+    return dirStats
+  }
+  aggregate(root, [])
+
+  return { tree: root.children || [], stats }
 }
 
 async function fetchData() {
@@ -100,17 +131,26 @@ async function fetchData() {
       return
     }
 
-    const tree = buildTree(data)
+    const { tree, stats } = buildTree(data)
 
     chartOption.value = {
       tooltip: {
         formatter(info: any) {
-          const val = info.value
-          const commits = info.data?.commits
-          const fullPath = info.data?.fullPath || info.name
-          const lines = typeof val === 'number' ? val.toLocaleString() : '—'
-          const commitStr = commits != null ? commits.toLocaleString() : '—'
-          return `<b>${fullPath}</b><br/>Lines changed: ${lines}<br/>Commits: ${commitStr}`
+          const treePath = info.treePathInfo || []
+          const fullPath = treePath
+            .slice(1)
+            .map((n: any) => n.name)
+            .join('/')
+          const s = stats.get(fullPath)
+          const lines = s ? s.lines.toLocaleString() : '—'
+          const adds = s ? s.additions.toLocaleString() : '—'
+          const dels = s ? s.deletions.toLocaleString() : '—'
+          const commits = s ? s.commits.toLocaleString() : '—'
+          return `<b>${fullPath || info.name}</b><br/>` +
+            `Lines changed: ${lines}<br/>` +
+            `<span style="color:#3fb950">+${adds}</span>` +
+            ` / <span style="color:#f85149">-${dels}</span><br/>` +
+            `Commits: ${commits}`
         },
       },
       series: [
@@ -223,7 +263,8 @@ watch(activePreset, fetchData)
   padding: 16px;
   display: flex;
   flex-direction: column;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
 }
 
 .hotspots-header {
@@ -268,7 +309,7 @@ watch(activePreset, fetchData)
 
 .treemap-chart {
   flex: 1;
-  min-height: 400px;
+  min-height: 0;
 }
 
 .hotspots-status {

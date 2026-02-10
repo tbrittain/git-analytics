@@ -46,17 +46,20 @@ func TestFileHotspots_Basic(t *testing.T) {
 		t.Fatalf("expected 3 hotspots, got %d: %v", len(hotspots), hotspots)
 	}
 
-	// main.go: (10+5) + (20+10) = 45 lines, 2 commits
-	if hotspots[0].Path != "main.go" || hotspots[0].LinesChanged != 45 || hotspots[0].Commits != 2 {
-		t.Errorf("hotspot 0: got %+v, want {main.go, 45, 2}", hotspots[0])
+	// main.go: adds 10+20=30, dels 5+10=15, lines 45, 2 commits
+	h := hotspots[0]
+	if h.Path != "main.go" || h.LinesChanged != 45 || h.Additions != 30 || h.Deletions != 15 || h.Commits != 2 {
+		t.Errorf("hotspot 0: got %+v, want {main.go, 45, 30, 15, 2}", h)
 	}
-	// util.go: 3+2 = 5 lines, 1 commit
-	if hotspots[1].Path != "util.go" || hotspots[1].LinesChanged != 5 || hotspots[1].Commits != 1 {
-		t.Errorf("hotspot 1: got %+v, want {util.go, 5, 1}", hotspots[1])
+	// util.go: adds 3, dels 2, lines 5, 1 commit
+	h = hotspots[1]
+	if h.Path != "util.go" || h.LinesChanged != 5 || h.Additions != 3 || h.Deletions != 2 || h.Commits != 1 {
+		t.Errorf("hotspot 1: got %+v, want {util.go, 5, 3, 2, 1}", h)
 	}
-	// readme.md: 1+0 = 1 line, 1 commit
-	if hotspots[2].Path != "readme.md" || hotspots[2].LinesChanged != 1 || hotspots[2].Commits != 1 {
-		t.Errorf("hotspot 2: got %+v, want {readme.md, 1, 1}", hotspots[2])
+	// readme.md: adds 1, dels 0, lines 1, 1 commit
+	h = hotspots[2]
+	if h.Path != "readme.md" || h.LinesChanged != 1 || h.Additions != 1 || h.Deletions != 0 || h.Commits != 1 {
+		t.Errorf("hotspot 2: got %+v, want {readme.md, 1, 1, 0, 1}", h)
 	}
 }
 
@@ -83,8 +86,8 @@ func TestFileHotspots_DateFiltering(t *testing.T) {
 	if len(hotspots) != 1 {
 		t.Fatalf("expected 1 hotspot, got %d: %v", len(hotspots), hotspots)
 	}
-	if hotspots[0].LinesChanged != 15 || hotspots[0].Commits != 1 {
-		t.Errorf("got %+v, want {main.go, 15, 1}", hotspots[0])
+	if hotspots[0].LinesChanged != 15 || hotspots[0].Additions != 10 || hotspots[0].Deletions != 5 || hotspots[0].Commits != 1 {
+		t.Errorf("got %+v, want {main.go, 15, 10, 5, 1}", hotspots[0])
 	}
 }
 

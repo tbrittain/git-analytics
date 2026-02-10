@@ -3,6 +3,8 @@ export namespace query {
 	export class FileHotspot {
 	    path: string;
 	    lines_changed: number;
+	    additions: number;
+	    deletions: number;
 	    commits: number;
 	
 	    static createFrom(source: any = {}) {
@@ -13,6 +15,8 @@ export namespace query {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.path = source["path"];
 	        this.lines_changed = source["lines_changed"];
+	        this.additions = source["additions"];
+	        this.deletions = source["deletions"];
 	        this.commits = source["commits"];
 	    }
 	}
