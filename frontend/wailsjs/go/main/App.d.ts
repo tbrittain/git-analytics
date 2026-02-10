@@ -4,6 +4,8 @@ import {query} from '../models';
 
 export function CommitHeatmap(arg1:string,arg2:string,arg3:string):Promise<Array<query.HeatmapDay>>;
 
+export function FileHotspots(arg1:string,arg2:string):Promise<Array<query.FileHotspot>>;
+
 export function OpenRepository(arg1:string):Promise<void>;
 
 export function SelectDirectory():Promise<string>;

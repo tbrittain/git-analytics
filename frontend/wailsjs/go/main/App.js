@@ -6,6 +6,10 @@ export function CommitHeatmap(arg1, arg2, arg3) {
   return window['go']['main']['App']['CommitHeatmap'](arg1, arg2, arg3);
 }
 
+export function FileHotspots(arg1, arg2) {
+  return window['go']['main']['App']['FileHotspots'](arg1, arg2);
+}
+
 export function OpenRepository(arg1) {
   return window['go']['main']['App']['OpenRepository'](arg1);
 }

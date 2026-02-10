@@ -141,6 +141,25 @@ func (a *App) CommitHeatmap(fromDate, toDate, email string) ([]query.HeatmapDay,
 	return query.CommitHeatmap(a.db, from, to, email)
 }
 
+// FileHotspots returns per-file churn (lines changed) and commit counts
+// between the given dates. Dates should be in "2006-01-02" format.
+func (a *App) FileHotspots(fromDate, toDate string) ([]query.FileHotspot, error) {
+	if a.db == nil {
+		return nil, fmt.Errorf("no repository open")
+	}
+
+	from, err := time.Parse("2006-01-02", fromDate)
+	if err != nil {
+		return nil, fmt.Errorf("parsing from date: %w", err)
+	}
+	to, err := time.Parse("2006-01-02", toDate)
+	if err != nil {
+		return nil, fmt.Errorf("parsing to date: %w", err)
+	}
+
+	return query.FileHotspots(a.db, from, to)
+}
+
 // addToGitExclude adds a pattern to .git/info/exclude if it's not already present.
 func addToGitExclude(repoPath, pattern string) error {
 	excludePath := filepath.Join(repoPath, ".git", "info", "exclude")

@@ -2,7 +2,6 @@
 import { ref } from 'vue'
 import { SelectDirectory, OpenRepository } from '../wailsjs/go/main/App'
 import RepoSelector from './components/RepoSelector.vue'
-import CommitHeatmap from './components/CommitHeatmap.vue'
 
 const repoPath = ref('')
 const loading = ref(false)
@@ -38,6 +37,10 @@ async function onSelectRepo() {
         :loading="loading"
         @select="onSelectRepo"
       />
+      <nav v-if="repoReady" class="nav-tabs">
+        <router-link to="/" exact-active-class="active">Activity</router-link>
+        <router-link to="/hotspots" active-class="active">Hotspots</router-link>
+      </nav>
     </header>
     <main>
       <div v-if="loading" class="status">
@@ -50,7 +53,7 @@ async function onSelectRepo() {
       <div v-else-if="!repoReady" class="status welcome">
         Open a Git repository to get started.
       </div>
-      <CommitHeatmap v-else :key="repoPath" />
+      <router-view v-else :key="repoPath" />
     </main>
   </div>
 </template>
@@ -77,6 +80,34 @@ header h1 {
   font-weight: 600;
   color: #f0f6fc;
   white-space: nowrap;
+}
+
+.nav-tabs {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.nav-tabs a {
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #c9d1d9;
+  text-decoration: none;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  background: #21262d;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.nav-tabs a:hover {
+  background: #30363d;
+}
+
+.nav-tabs a.active {
+  background: #1f6feb;
+  border-color: #1f6feb;
+  color: #ffffff;
 }
 
 main {
