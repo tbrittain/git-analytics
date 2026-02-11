@@ -1,18 +1,18 @@
 <script lang="ts" setup>
 import type { EChartsOption } from 'echarts'
 import { TreemapChart } from 'echarts/charts'
-import { TooltipComponent } from 'echarts/components'
+import { TooltipComponent, VisualMapComponent } from 'echarts/components'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { inject, onMounted, type Ref, ref, watch } from 'vue'
 import VChart from 'vue-echarts'
-import { FileHotspots } from '../../wailsjs/go/main/App'
+import { FileHotspots, TemporalHotspots } from '../../wailsjs/go/main/App'
 import DateRangeSelector from '../components/DateRangeSelector.vue'
 import ExcludeFilter from '../components/ExcludeFilter.vue'
 import { useDateRange } from '../composables/useDateRange'
 import { useExcludePatterns } from '../composables/useExcludePatterns'
 
-use([TreemapChart, TooltipComponent, CanvasRenderer])
+use([TreemapChart, TooltipComponent, VisualMapComponent, CanvasRenderer])
 
 type TreePathEntry = {
   name: string
@@ -34,10 +34,11 @@ const { presets, activePreset, customFrom, customTo, fromStr, toStr, setPreset }
 const loading = ref(false)
 const error = ref('')
 const chartOption = ref<EChartsOption | null>(null)
+const mode = ref<'total' | 'recency'>('total')
 
 type TreeNode = {
   name: string
-  value?: number
+  value?: number | number[]
   children?: TreeNode[]
 }
 
@@ -46,10 +47,12 @@ type NodeStats = {
   additions: number
   deletions: number
   commits: number
+  score?: number
+  lastChanged?: string
+  daysSince?: number
 }
 
-// Build tree for ECharts (value = lines_changed for sizing) and a side-channel
-// stats map keyed by full path for the tooltip.
+// Build tree for total churn mode (value = lines_changed for sizing).
 function buildTree(
   items: { path: string; lines_changed: number; additions: number; deletions: number; commits: number }[],
 ): { tree: TreeNode[]; stats: Map<string, NodeStats> } {
@@ -85,7 +88,6 @@ function buildTree(
     }
   }
 
-  // Roll up stats for directory nodes and set value for sizing.
   function aggregate(node: TreeNode, pathParts: string[]): NodeStats {
     if (!node.children || node.children.length === 0) {
       const key = pathParts.join('/')
@@ -113,108 +115,315 @@ function buildTree(
   return { tree: root.children || [], stats }
 }
 
+// Build tree for recency mode. value = [score, daysSince] for sizing + coloring.
+function buildRecencyTree(
+  items: {
+    path: string
+    lines_changed: number
+    additions: number
+    deletions: number
+    commits: number
+    last_changed: string
+    days_since: number
+    score: number
+  }[],
+): { tree: TreeNode[]; stats: Map<string, NodeStats>; maxDays: number } {
+  const root: TreeNode = { name: '/', children: [] }
+  const stats = new Map<string, NodeStats>()
+  let maxDays = 0
+
+  for (const item of items) {
+    const parts = item.path.replace(/\\/g, '/').split('/')
+    let current = root
+
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i]
+      if (!current.children) current.children = []
+
+      let child = current.children.find((c) => c.name === part)
+      if (!child) {
+        child = { name: part, children: [] }
+        current.children.push(child)
+      }
+
+      if (i === parts.length - 1) {
+        child.value = [item.score, item.days_since]
+        stats.set(item.path, {
+          lines: item.lines_changed,
+          additions: item.additions,
+          deletions: item.deletions,
+          commits: item.commits,
+          score: item.score,
+          lastChanged: item.last_changed,
+          daysSince: item.days_since,
+        })
+        if (item.days_since > maxDays) maxDays = item.days_since
+        delete child.children
+      }
+
+      current = child
+    }
+  }
+
+  function aggregate(node: TreeNode, pathParts: string[]): NodeStats {
+    if (!node.children || node.children.length === 0) {
+      const key = pathParts.join('/')
+      return (
+        stats.get(key) || {
+          lines: 0,
+          additions: 0,
+          deletions: 0,
+          commits: 0,
+          score: 0,
+          daysSince: 0,
+        }
+      )
+    }
+    let lines = 0,
+      adds = 0,
+      dels = 0,
+      commits = 0,
+      score = 0,
+      minDays = Infinity
+    for (const child of node.children) {
+      const s = aggregate(child, [...pathParts, child.name])
+      lines += s.lines
+      adds += s.additions
+      dels += s.deletions
+      commits += s.commits
+      score += s.score ?? 0
+      if ((s.daysSince ?? Infinity) < minDays) minDays = s.daysSince ?? Infinity
+    }
+    node.value = [score, minDays === Infinity ? 0 : minDays]
+    const key = pathParts.join('/')
+    const dirStats: NodeStats = {
+      lines,
+      additions: adds,
+      deletions: dels,
+      commits,
+      score,
+      daysSince: minDays === Infinity ? 0 : minDays,
+    }
+    stats.set(key, dirStats)
+    return dirStats
+  }
+  aggregate(root, [])
+
+  return { tree: root.children || [], stats, maxDays }
+}
+
+function buildFullPath(info: TreemapFormatterParams): string {
+  const treePath = info.treePathInfo ?? []
+  return treePath
+    .slice(1)
+    .map((n: TreePathEntry) => n.name)
+    .join('/')
+}
+
 async function fetchData() {
   if (!fromStr.value || !toStr.value) return
   loading.value = true
   error.value = ''
 
   try {
-    const data = await FileHotspots(fromStr.value, toStr.value, patterns.value)
-    if (!data || data.length === 0) {
-      chartOption.value = null
-      return
-    }
+    if (mode.value === 'recency') {
+      const data = await TemporalHotspots(fromStr.value, toStr.value, 90, patterns.value)
+      if (!data || data.length === 0) {
+        chartOption.value = null
+        return
+      }
 
-    const { tree, stats } = buildTree(data)
+      const { tree, stats, maxDays } = buildRecencyTree(data)
 
-    chartOption.value = {
-      tooltip: {
-        formatter(params) {
-          const info = params as TreemapFormatterParams
-          const treePath = info.treePathInfo ?? []
-          const fullPath = treePath
-            .slice(1)
-            .map((n: TreePathEntry) => n.name)
-            .join('/')
-          const s = stats.get(fullPath)
-          const lines = s ? s.lines.toLocaleString() : '—'
-          const adds = s ? s.additions.toLocaleString() : '—'
-          const dels = s ? s.deletions.toLocaleString() : '—'
-          const commits = s ? s.commits.toLocaleString() : '—'
-          return (
-            `<b>${fullPath || info.name}</b><br/>` +
-            `Lines changed: ${lines}<br/>` +
-            `<span style="color:#3fb950">+${adds}</span>` +
-            ` / <span style="color:#f85149">-${dels}</span><br/>` +
-            `Commits: ${commits}`
-          )
+      chartOption.value = {
+        tooltip: {
+          formatter(params) {
+            const info = params as TreemapFormatterParams
+            const fullPath = buildFullPath(info)
+            const s = stats.get(fullPath)
+            if (!s) return `<b>${fullPath || info.name}</b>`
+            return (
+              `<b>${fullPath || info.name}</b><br/>` +
+              `Score: ${s.score?.toFixed(1)}<br/>` +
+              `Lines changed: ${s.lines.toLocaleString()}<br/>` +
+              `<span style="color:#3fb950">+${s.additions.toLocaleString()}</span>` +
+              ` / <span style="color:#f85149">-${s.deletions.toLocaleString()}</span><br/>` +
+              `Last changed: ${s.lastChanged ?? '—'} (${s.daysSince ?? 0}d ago)<br/>` +
+              `Commits: ${s.commits.toLocaleString()}`
+            )
+          },
         },
-      },
-      series: [
-        {
-          type: 'treemap',
-          data: tree,
-          leafDepth: 2,
-          width: '100%',
-          height: '100%',
-          roam: false,
-          nodeClick: 'zoomToNode',
-          breadcrumb: {
-            show: true,
-            bottom: 10,
-            itemStyle: {
-              color: '#21262d',
-              borderColor: '#30363d',
-              textStyle: { color: '#c9d1d9' },
-            },
-            emphasis: {
-              itemStyle: { color: '#30363d' },
-            },
+        visualMap: {
+          type: 'continuous',
+          dimension: 1,
+          min: 0,
+          max: Math.max(maxDays, 1),
+          inRange: {
+            color: ['#f85149', '#d29922', '#58a6ff'],
           },
-          upperLabel: {
-            show: true,
-            height: 20,
-            color: '#c9d1d9',
-            fontSize: 12,
-            backgroundColor: 'transparent',
-          },
-          itemStyle: {
-            borderColor: '#0d1117',
-            borderWidth: 2,
-            gapWidth: 2,
-          },
-          levels: [
-            {
+          textStyle: { color: '#8b949e' },
+          text: ['Old', 'Recent'],
+          right: 10,
+          bottom: 50,
+          calculable: false,
+        },
+        series: [
+          {
+            type: 'treemap',
+            data: tree,
+            leafDepth: 2,
+            width: '100%',
+            height: '90%',
+            roam: false,
+            nodeClick: 'zoomToNode',
+            breadcrumb: {
+              show: true,
+              bottom: 10,
               itemStyle: {
+                color: '#21262d',
                 borderColor: '#30363d',
-                borderWidth: 3,
-                gapWidth: 3,
+                textStyle: { color: '#c9d1d9' },
               },
-              upperLabel: {
-                show: true,
-                color: '#c9d1d9',
-                fontSize: 13,
-                fontWeight: 600,
+              emphasis: {
+                itemStyle: { color: '#30363d' },
               },
             },
-            {
-              colorSaturation: [0.3, 0.7],
-              itemStyle: {
-                borderColorSaturation: 0.6,
-                gapWidth: 1,
-              },
+            upperLabel: {
+              show: true,
+              height: 20,
+              color: '#c9d1d9',
+              fontSize: 12,
+              backgroundColor: 'transparent',
             },
-          ],
-          visualMin: 0,
-          color: ['#0e4429', '#006d32', '#26a641', '#39d353', '#58a6ff'],
-          label: {
-            show: true,
-            formatter: '{b}',
-            color: '#c9d1d9',
-            fontSize: 11,
+            itemStyle: {
+              borderColor: '#0d1117',
+              borderWidth: 2,
+              gapWidth: 2,
+            },
+            levels: [
+              {
+                itemStyle: {
+                  borderColor: '#30363d',
+                  borderWidth: 3,
+                  gapWidth: 3,
+                },
+                upperLabel: {
+                  show: true,
+                  color: '#c9d1d9',
+                  fontSize: 13,
+                  fontWeight: 600,
+                },
+              },
+              {
+                itemStyle: {
+                  gapWidth: 1,
+                },
+              },
+            ],
+            visualMin: 0,
+            label: {
+              show: true,
+              formatter: '{b}',
+              color: '#c9d1d9',
+              fontSize: 11,
+            },
+          },
+        ],
+      }
+    } else {
+      const data = await FileHotspots(fromStr.value, toStr.value, patterns.value)
+      if (!data || data.length === 0) {
+        chartOption.value = null
+        return
+      }
+
+      const { tree, stats } = buildTree(data)
+
+      chartOption.value = {
+        tooltip: {
+          formatter(params) {
+            const info = params as TreemapFormatterParams
+            const fullPath = buildFullPath(info)
+            const s = stats.get(fullPath)
+            const lines = s ? s.lines.toLocaleString() : '—'
+            const adds = s ? s.additions.toLocaleString() : '—'
+            const dels = s ? s.deletions.toLocaleString() : '—'
+            const commits = s ? s.commits.toLocaleString() : '—'
+            return (
+              `<b>${fullPath || info.name}</b><br/>` +
+              `Lines changed: ${lines}<br/>` +
+              `<span style="color:#3fb950">+${adds}</span>` +
+              ` / <span style="color:#f85149">-${dels}</span><br/>` +
+              `Commits: ${commits}`
+            )
           },
         },
-      ],
+        series: [
+          {
+            type: 'treemap',
+            data: tree,
+            leafDepth: 2,
+            width: '100%',
+            height: '100%',
+            roam: false,
+            nodeClick: 'zoomToNode',
+            breadcrumb: {
+              show: true,
+              bottom: 10,
+              itemStyle: {
+                color: '#21262d',
+                borderColor: '#30363d',
+                textStyle: { color: '#c9d1d9' },
+              },
+              emphasis: {
+                itemStyle: { color: '#30363d' },
+              },
+            },
+            upperLabel: {
+              show: true,
+              height: 20,
+              color: '#c9d1d9',
+              fontSize: 12,
+              backgroundColor: 'transparent',
+            },
+            itemStyle: {
+              borderColor: '#0d1117',
+              borderWidth: 2,
+              gapWidth: 2,
+            },
+            levels: [
+              {
+                itemStyle: {
+                  borderColor: '#30363d',
+                  borderWidth: 3,
+                  gapWidth: 3,
+                },
+                upperLabel: {
+                  show: true,
+                  color: '#c9d1d9',
+                  fontSize: 13,
+                  fontWeight: 600,
+                },
+              },
+              {
+                colorSaturation: [0.3, 0.7],
+                itemStyle: {
+                  borderColorSaturation: 0.6,
+                  gapWidth: 1,
+                },
+              },
+            ],
+            visualMin: 0,
+            color: ['#0e4429', '#006d32', '#26a641', '#39d353', '#58a6ff'],
+            label: {
+              show: true,
+              formatter: '{b}',
+              color: '#c9d1d9',
+              fontSize: 11,
+            },
+          },
+        ],
+      }
     }
   } catch (e: unknown) {
     error.value = e instanceof Error ? e.message : String(e)
@@ -224,7 +433,7 @@ async function fetchData() {
 }
 
 onMounted(fetchData)
-watch([fromStr, toStr], fetchData)
+watch([fromStr, toStr, mode], fetchData)
 watch(patterns, fetchData)
 </script>
 
@@ -233,6 +442,20 @@ watch(patterns, fetchData)
     <div class="hotspots-header">
       <h3>Code Hotspots</h3>
       <div class="controls">
+        <div class="mode-toggle">
+          <button
+            :class="['mode-btn', { active: mode === 'total' }]"
+            @click="mode = 'total'"
+          >
+            Total Churn
+          </button>
+          <button
+            :class="['mode-btn', { active: mode === 'recency' }]"
+            @click="mode = 'recency'"
+          >
+            Churn x Recency
+          </button>
+        </div>
         <ExcludeFilter
           :patterns="patterns"
           @add="addPattern"
@@ -290,6 +513,37 @@ watch(patterns, fetchData)
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.mode-toggle {
+  display: flex;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.mode-btn {
+  padding: 4px 12px;
+  font-size: 12px;
+  background: #21262d;
+  color: #8b949e;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.mode-btn:first-child {
+  border-right: 1px solid #30363d;
+}
+
+.mode-btn.active {
+  background: #1f6feb;
+  color: #ffffff;
+}
+
+.mode-btn:hover:not(.active) {
+  background: #30363d;
+  color: #c9d1d9;
 }
 
 .treemap-chart {
