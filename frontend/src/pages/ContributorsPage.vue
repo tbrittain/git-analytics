@@ -2,61 +2,30 @@
 import { inject, onMounted, type Ref, ref, watch } from 'vue'
 import { Contributors } from '../../wailsjs/go/main/App'
 import type { query } from '../../wailsjs/go/models'
+import DateRangeSelector from '../components/DateRangeSelector.vue'
 import ExcludeFilter from '../components/ExcludeFilter.vue'
+import { useDateRange } from '../composables/useDateRange'
 import { useExcludePatterns } from '../composables/useExcludePatterns'
-
-type Preset = {
-  label: string
-  days: number | null
-}
-
-const presets: Preset[] = [
-  { label: '30d', days: 30 },
-  { label: '90d', days: 90 },
-  { label: '6mo', days: 182 },
-  { label: '1yr', days: 365 },
-  { label: 'All', days: null },
-]
 
 const repoPath = inject<Ref<string>>('repoPath', ref(''))
 const { patterns, addPattern, removePattern } = useExcludePatterns(repoPath)
+const { presets, activePreset, customFrom, customTo, fromStr, toStr, setPreset } = useDateRange()
 
-const activePreset = ref(2) // default 6mo
 const loading = ref(false)
 const error = ref('')
 const contributors = ref<query.Contributor[]>([])
-
-function formatDate(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
 
 function formatNumber(n: number): string {
   return n.toLocaleString()
 }
 
 async function fetchData() {
+  if (!fromStr.value || !toStr.value) return
   loading.value = true
   error.value = ''
 
   try {
-    const to = new Date()
-    to.setDate(to.getDate() + 1)
-    const toStr = formatDate(to)
-
-    let fromStr: string
-    const preset = presets[activePreset.value]
-    if (preset.days !== null) {
-      const from = new Date()
-      from.setDate(from.getDate() - preset.days)
-      fromStr = formatDate(from)
-    } else {
-      fromStr = '1970-01-01'
-    }
-
-    const data = await Contributors(fromStr, toStr, patterns.value)
+    const data = await Contributors(fromStr.value, toStr.value, patterns.value)
     contributors.value = data || []
   } catch (e: unknown) {
     error.value = e instanceof Error ? e.message : String(e)
@@ -66,7 +35,7 @@ async function fetchData() {
 }
 
 onMounted(fetchData)
-watch(activePreset, fetchData)
+watch([fromStr, toStr], fetchData)
 watch(patterns, fetchData)
 </script>
 
@@ -80,16 +49,15 @@ watch(patterns, fetchData)
           @add="addPattern"
           @remove="removePattern"
         />
-        <div class="presets">
-          <button
-            v-for="(preset, i) in presets"
-            :key="preset.label"
-            :class="['preset-btn', { active: activePreset === i }]"
-            @click="activePreset = i"
-          >
-            {{ preset.label }}
-          </button>
-        </div>
+        <DateRangeSelector
+          :presets="presets"
+          :active-preset="activePreset"
+          :custom-from="customFrom"
+          :custom-to="customTo"
+          @select-preset="setPreset"
+          @update:custom-from="customFrom = $event"
+          @update:custom-to="customTo = $event"
+        />
       </div>
     </div>
 
@@ -152,31 +120,6 @@ watch(patterns, fetchData)
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.presets {
-  display: flex;
-  gap: 4px;
-}
-
-.preset-btn {
-  padding: 4px 12px;
-  font-size: 12px;
-  border: 1px solid #30363d;
-  border-radius: 6px;
-  background: #21262d;
-  color: #c9d1d9;
-  cursor: pointer;
-}
-
-.preset-btn:hover {
-  background: #30363d;
-}
-
-.preset-btn.active {
-  background: #1f6feb;
-  border-color: #1f6feb;
-  color: #ffffff;
 }
 
 .table-wrapper {
