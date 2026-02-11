@@ -40,6 +40,7 @@ async function onSelectRepo() {
       <nav v-if="repoReady" class="nav-tabs">
         <router-link to="/" exact-active-class="active">Activity</router-link>
         <router-link to="/hotspots" active-class="active">Hotspots</router-link>
+        <router-link to="/contributors" active-class="active">Contributors</router-link>
       </nav>
     </header>
     <main>
