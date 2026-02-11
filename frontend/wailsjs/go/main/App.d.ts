@@ -3,6 +3,8 @@
 import {query} from '../models';
 import {main} from '../models';
 
+export function CoChanges(arg1:string,arg2:string,arg3:number,arg4:number,arg5:Array<string>):Promise<Array<query.CoChangePair>>;
+
 export function CommitHeatmap(arg1:string,arg2:string,arg3:string):Promise<Array<query.HeatmapDay>>;
 
 export function CommitsByHour(arg1:string,arg2:string):Promise<Array<query.HourBucket>>;
