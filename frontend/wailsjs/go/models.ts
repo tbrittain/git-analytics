@@ -40,6 +40,34 @@ export namespace query {
 	        this.commits = source["commits"];
 	    }
 	}
+	export class FileOwnership {
+	    path: string;
+	    top_author_name: string;
+	    top_author_email: string;
+	    top_author_pct: number;
+	    second_author_name: string;
+	    second_author_email: string;
+	    second_author_pct: number;
+	    contributor_count: number;
+	    total_lines: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new FileOwnership(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.top_author_name = source["top_author_name"];
+	        this.top_author_email = source["top_author_email"];
+	        this.top_author_pct = source["top_author_pct"];
+	        this.second_author_name = source["second_author_name"];
+	        this.second_author_email = source["second_author_email"];
+	        this.second_author_pct = source["second_author_pct"];
+	        this.contributor_count = source["contributor_count"];
+	        this.total_lines = source["total_lines"];
+	    }
+	}
 	export class HeatmapDay {
 	    date: string;
 	    count: number;

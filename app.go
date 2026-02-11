@@ -181,6 +181,26 @@ func (a *App) Contributors(fromDate, toDate string, excludeGlobs []string) ([]qu
 	return query.Contributors(a.db, from, to, excludeGlobs)
 }
 
+// FileOwnerships returns per-file ownership analysis showing the dominant
+// contributors between the given dates. Dates should be in "2006-01-02" format.
+// Files matching any of the excludeGlobs patterns are omitted.
+func (a *App) FileOwnerships(fromDate, toDate string, excludeGlobs []string) ([]query.FileOwnership, error) {
+	if a.db == nil {
+		return nil, fmt.Errorf("no repository open")
+	}
+
+	from, err := time.Parse("2006-01-02", fromDate)
+	if err != nil {
+		return nil, fmt.Errorf("parsing from date: %w", err)
+	}
+	to, err := time.Parse("2006-01-02", toDate)
+	if err != nil {
+		return nil, fmt.Errorf("parsing to date: %w", err)
+	}
+
+	return query.FileOwnerships(a.db, from, to, excludeGlobs)
+}
+
 // addToGitExclude adds a pattern to .git/info/exclude if it's not already present.
 func addToGitExclude(repoPath, pattern string) error {
 	excludePath := filepath.Join(repoPath, ".git", "info", "exclude")

@@ -14,6 +14,10 @@ export function FileHotspots(arg1, arg2, arg3) {
   return window['go']['main']['App']['FileHotspots'](arg1, arg2, arg3);
 }
 
+export function FileOwnerships(arg1, arg2, arg3) {
+  return window['go']['main']['App']['FileOwnerships'](arg1, arg2, arg3);
+}
+
 export function OpenRepository(arg1) {
   return window['go']['main']['App']['OpenRepository'](arg1);
 }
