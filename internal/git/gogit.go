@@ -3,6 +3,7 @@ package git
 import (
 	"errors"
 	"io"
+	"path/filepath"
 
 	gogit "github.com/go-git/go-git/v6"
 	"github.com/go-git/go-git/v6/plumbing"
@@ -13,6 +14,7 @@ import (
 // goGitRepo implements Repository using go-git.
 type goGitRepo struct {
 	repo *gogit.Repository
+	path string
 }
 
 // Open opens an existing git repository on disk.
@@ -21,7 +23,19 @@ func Open(path string) (Repository, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &goGitRepo{repo: repo}, nil
+	return &goGitRepo{repo: repo, path: path}, nil
+}
+
+func (r *goGitRepo) RepoName() string {
+	return filepath.Base(r.path)
+}
+
+func (r *goGitRepo) CurrentBranch() string {
+	ref, err := r.repo.Head()
+	if err != nil {
+		return "HEAD"
+	}
+	return ref.Name().Short()
 }
 
 func (r *goGitRepo) HeadHash() (string, error) {

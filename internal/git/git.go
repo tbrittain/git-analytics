@@ -33,5 +33,10 @@ type Repository interface {
 	Log(sinceHash string) (CommitIter, error)
 	// HeadHash returns the current HEAD commit hash.
 	HeadHash() (string, error)
+	// RepoName returns the base directory name of the repository.
+	RepoName() string
+	// CurrentBranch returns the short name of the current branch (e.g. "main"),
+	// or "HEAD" if in detached state.
+	CurrentBranch() string
 	Close() error
 }

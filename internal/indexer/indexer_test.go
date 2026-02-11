@@ -30,7 +30,9 @@ func (r *fakeRepo) Log(sinceHash string) (git.CommitIter, error) {
 	return &fakeIter{commits: filtered}, nil
 }
 
-func (r *fakeRepo) Close() error { return nil }
+func (r *fakeRepo) RepoName() string      { return "fake-repo" }
+func (r *fakeRepo) CurrentBranch() string { return "main" }
+func (r *fakeRepo) Close() error          { return nil }
 
 // fakeIter implements git.CommitIter for testing.
 type fakeIter struct {
