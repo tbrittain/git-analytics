@@ -1,6 +1,6 @@
 <script lang="ts" setup>
-import { ref } from 'vue'
-import type { Preset } from '../composables/useDateRange'
+import { computed, ref } from 'vue'
+import { formatDate, type Preset } from '../composables/useDateRange'
 
 defineProps<{
   presets: Preset[]
@@ -15,6 +15,7 @@ const emit = defineEmits<{
   'update:customTo': [value: string]
 }>()
 
+const today = computed(() => formatDate(new Date()))
 const showCustom = ref(false)
 
 function onSelectPreset(index: number) {
@@ -50,6 +51,7 @@ function onToggleCustom() {
         type="date"
         class="date-input"
         :value="customFrom"
+        :max="customTo || today"
         @input="emit('update:customFrom', ($event.target as HTMLInputElement).value)"
       />
       <span class="date-separator">to</span>
@@ -57,6 +59,8 @@ function onToggleCustom() {
         type="date"
         class="date-input"
         :value="customTo"
+        :min="customFrom"
+        :max="today"
         @input="emit('update:customTo', ($event.target as HTMLInputElement).value)"
       />
     </div>
