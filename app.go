@@ -223,6 +223,27 @@ func (a *App) TemporalHotspots(fromDate, toDate string, halfLifeDays float64, ex
 	return query.TemporalHotspots(a.db, from, to, halfLifeDays, excludeGlobs)
 }
 
+// CoChanges returns file pairs that frequently change together in commits
+// between the given dates. Dates should be in "2006-01-02" format.
+// Only pairs with at least minCount shared commits are returned, up to limit.
+// Files matching any of the excludeGlobs patterns are omitted.
+func (a *App) CoChanges(fromDate, toDate string, minCount int, limit int, excludeGlobs []string) ([]query.CoChangePair, error) {
+	if a.db == nil {
+		return nil, fmt.Errorf("no repository open")
+	}
+
+	from, err := time.Parse("2006-01-02", fromDate)
+	if err != nil {
+		return nil, fmt.Errorf("parsing from date: %w", err)
+	}
+	to, err := time.Parse("2006-01-02", toDate)
+	if err != nil {
+		return nil, fmt.Errorf("parsing to date: %w", err)
+	}
+
+	return query.CoChanges(a.db, from, to, minCount, limit, excludeGlobs)
+}
+
 // RepoInfo holds metadata about the currently opened repository.
 type RepoInfo struct {
 	Name          string `json:"name"`

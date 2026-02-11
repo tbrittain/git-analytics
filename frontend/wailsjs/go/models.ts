@@ -29,6 +29,28 @@ export namespace main {
 
 export namespace query {
 	
+	export class CoChangePair {
+	    file_a: string;
+	    file_b: string;
+	    co_change_count: number;
+	    commits_a: number;
+	    commits_b: number;
+	    coupling_ratio: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new CoChangePair(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.file_a = source["file_a"];
+	        this.file_b = source["file_b"];
+	        this.co_change_count = source["co_change_count"];
+	        this.commits_a = source["commits_a"];
+	        this.commits_b = source["commits_b"];
+	        this.coupling_ratio = source["coupling_ratio"];
+	    }
+	}
 	export class Contributor {
 	    author_name: string;
 	    author_email: string;

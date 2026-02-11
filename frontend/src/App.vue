@@ -43,6 +43,7 @@ async function onSelectRepo() {
         <router-link to="/hotspots" active-class="active">Hotspots</router-link>
         <router-link to="/contributors" active-class="active">Contributors</router-link>
         <router-link to="/ownership" active-class="active">Ownership</router-link>
+        <router-link to="/coupling" active-class="active">Coupling</router-link>
       </nav>
     </header>
     <main>
