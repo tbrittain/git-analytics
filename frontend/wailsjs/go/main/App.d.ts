@@ -13,3 +13,5 @@ export function FileOwnerships(arg1:string,arg2:string,arg3:Array<string>):Promi
 export function OpenRepository(arg1:string):Promise<void>;
 
 export function SelectDirectory():Promise<string>;
+
+export function TemporalHotspots(arg1:string,arg2:string,arg3:number,arg4:Array<string>):Promise<Array<query.TemporalHotspot>>;

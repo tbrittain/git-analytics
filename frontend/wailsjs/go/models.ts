@@ -82,6 +82,32 @@ export namespace query {
 	        this.count = source["count"];
 	    }
 	}
+	export class TemporalHotspot {
+	    path: string;
+	    lines_changed: number;
+	    additions: number;
+	    deletions: number;
+	    commits: number;
+	    last_changed: string;
+	    days_since: number;
+	    score: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new TemporalHotspot(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.lines_changed = source["lines_changed"];
+	        this.additions = source["additions"];
+	        this.deletions = source["deletions"];
+	        this.commits = source["commits"];
+	        this.last_changed = source["last_changed"];
+	        this.days_since = source["days_since"];
+	        this.score = source["score"];
+	    }
+	}
 
 }
 

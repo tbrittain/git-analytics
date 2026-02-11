@@ -25,3 +25,7 @@ export function OpenRepository(arg1) {
 export function SelectDirectory() {
   return window['go']['main']['App']['SelectDirectory']();
 }
+
+export function TemporalHotspots(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['TemporalHotspots'](arg1, arg2, arg3, arg4);
+}

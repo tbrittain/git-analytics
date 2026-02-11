@@ -201,6 +201,27 @@ func (a *App) FileOwnerships(fromDate, toDate string, excludeGlobs []string) ([]
 	return query.FileOwnerships(a.db, from, to, excludeGlobs)
 }
 
+// TemporalHotspots returns per-file churn weighted by recency (exponential
+// decay) between the given dates. Dates should be in "2006-01-02" format.
+// halfLifeDays controls how fast old changes decay. Files matching any of
+// the excludeGlobs patterns are omitted.
+func (a *App) TemporalHotspots(fromDate, toDate string, halfLifeDays float64, excludeGlobs []string) ([]query.TemporalHotspot, error) {
+	if a.db == nil {
+		return nil, fmt.Errorf("no repository open")
+	}
+
+	from, err := time.Parse("2006-01-02", fromDate)
+	if err != nil {
+		return nil, fmt.Errorf("parsing from date: %w", err)
+	}
+	to, err := time.Parse("2006-01-02", toDate)
+	if err != nil {
+		return nil, fmt.Errorf("parsing to date: %w", err)
+	}
+
+	return query.TemporalHotspots(a.db, from, to, halfLifeDays, excludeGlobs)
+}
+
 // addToGitExclude adds a pattern to .git/info/exclude if it's not already present.
 func addToGitExclude(repoPath, pattern string) error {
 	excludePath := filepath.Join(repoPath, ".git", "info", "exclude")
