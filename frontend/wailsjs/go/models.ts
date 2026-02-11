@@ -1,3 +1,32 @@
+export namespace main {
+	
+	export class RepoInfo {
+	    name: string;
+	    branch: string;
+	    head_hash: string;
+	    last_author: string;
+	    last_email: string;
+	    last_message: string;
+	    last_commit_age: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new RepoInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.branch = source["branch"];
+	        this.head_hash = source["head_hash"];
+	        this.last_author = source["last_author"];
+	        this.last_email = source["last_email"];
+	        this.last_message = source["last_message"];
+	        this.last_commit_age = source["last_commit_age"];
+	    }
+	}
+
+}
+
 export namespace query {
 	
 	export class Contributor {
@@ -18,6 +47,26 @@ export namespace query {
 	        this.commits = source["commits"];
 	        this.additions = source["additions"];
 	        this.deletions = source["deletions"];
+	    }
+	}
+	export class DashboardStats {
+	    commits: number;
+	    contributors: number;
+	    additions: number;
+	    deletions: number;
+	    files_changed: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new DashboardStats(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.commits = source["commits"];
+	        this.contributors = source["contributors"];
+	        this.additions = source["additions"];
+	        this.deletions = source["deletions"];
+	        this.files_changed = source["files_changed"];
 	    }
 	}
 	export class FileHotspot {
@@ -79,6 +128,20 @@ export namespace query {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.date = source["date"];
+	        this.count = source["count"];
+	    }
+	}
+	export class HourBucket {
+	    hour: number;
+	    count: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new HourBucket(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.hour = source["hour"];
 	        this.count = source["count"];
 	    }
 	}

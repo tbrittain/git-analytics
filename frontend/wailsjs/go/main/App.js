@@ -6,8 +6,16 @@ export function CommitHeatmap(arg1, arg2, arg3) {
   return window['go']['main']['App']['CommitHeatmap'](arg1, arg2, arg3);
 }
 
+export function CommitsByHour(arg1, arg2) {
+  return window['go']['main']['App']['CommitsByHour'](arg1, arg2);
+}
+
 export function Contributors(arg1, arg2, arg3) {
   return window['go']['main']['App']['Contributors'](arg1, arg2, arg3);
+}
+
+export function DashboardStats(arg1, arg2) {
+  return window['go']['main']['App']['DashboardStats'](arg1, arg2);
 }
 
 export function FileHotspots(arg1, arg2, arg3) {
@@ -20,6 +28,10 @@ export function FileOwnerships(arg1, arg2, arg3) {
 
 export function OpenRepository(arg1) {
   return window['go']['main']['App']['OpenRepository'](arg1);
+}
+
+export function RepoInfo() {
+  return window['go']['main']['App']['RepoInfo']();
 }
 
 export function SelectDirectory() {

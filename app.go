@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
@@ -220,6 +221,131 @@ func (a *App) TemporalHotspots(fromDate, toDate string, halfLifeDays float64, ex
 	}
 
 	return query.TemporalHotspots(a.db, from, to, halfLifeDays, excludeGlobs)
+}
+
+// RepoInfo holds metadata about the currently opened repository.
+type RepoInfo struct {
+	Name          string `json:"name"`
+	Branch        string `json:"branch"`
+	HeadHash      string `json:"head_hash"`
+	LastAuthor    string `json:"last_author"`
+	LastEmail     string `json:"last_email"`
+	LastMessage   string `json:"last_message"`
+	LastCommitAge string `json:"last_commit_age"`
+}
+
+// RepoInfo returns metadata about the currently opened repository.
+func (a *App) RepoInfo() (*RepoInfo, error) {
+	if a.repo == nil || a.db == nil {
+		return nil, fmt.Errorf("no repository open")
+	}
+
+	hash, err := a.repo.HeadHash()
+	if err != nil {
+		return nil, fmt.Errorf("reading HEAD: %w", err)
+	}
+
+	info := &RepoInfo{
+		Name:     a.repo.RepoName(),
+		Branch:   a.repo.CurrentBranch(),
+		HeadHash: hash[:min(7, len(hash))],
+	}
+
+	var authorName, authorEmail, message, committedAt string
+	err = a.db.QueryRow(
+		`SELECT author_name, author_email, message, committed_at
+		 FROM commits ORDER BY committed_at DESC LIMIT 1`,
+	).Scan(&authorName, &authorEmail, &message, &committedAt)
+	if err == sql.ErrNoRows {
+		return info, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("querying last commit: %w", err)
+	}
+
+	info.LastAuthor = authorName
+	info.LastEmail = authorEmail
+	info.LastMessage = strings.TrimSpace(message)
+
+	t, err := time.Parse(time.RFC3339, committedAt)
+	if err != nil {
+		trimmed := committedAt
+		if idx := strings.LastIndex(trimmed, " "); idx > 0 {
+			trimmed = trimmed[:idx]
+		}
+		t, err = time.Parse("2006-01-02 15:04:05 -0700", trimmed)
+		if err != nil {
+			info.LastCommitAge = committedAt
+			return info, nil
+		}
+	}
+	info.LastCommitAge = relativeTime(t)
+
+	return info, nil
+}
+
+func relativeTime(t time.Time) string {
+	d := time.Since(t)
+	switch {
+	case d < time.Minute:
+		return "just now"
+	case d < time.Hour:
+		m := int(d.Minutes())
+		if m == 1 {
+			return "1 minute ago"
+		}
+		return fmt.Sprintf("%d minutes ago", m)
+	case d < 24*time.Hour:
+		h := int(d.Hours())
+		if h == 1 {
+			return "1 hour ago"
+		}
+		return fmt.Sprintf("%d hours ago", h)
+	default:
+		days := int(d.Hours() / 24)
+		if days == 1 {
+			return "1 day ago"
+		}
+		return fmt.Sprintf("%d days ago", days)
+	}
+}
+
+// DashboardStats returns aggregate commit and file-change stats between the
+// given dates. Dates should be in "2006-01-02" format.
+func (a *App) DashboardStats(fromDate, toDate string) (*query.DashboardStats, error) {
+	if a.db == nil {
+		return nil, fmt.Errorf("no repository open")
+	}
+
+	from, err := time.Parse("2006-01-02", fromDate)
+	if err != nil {
+		return nil, fmt.Errorf("parsing from date: %w", err)
+	}
+	to, err := time.Parse("2006-01-02", toDate)
+	if err != nil {
+		return nil, fmt.Errorf("parsing to date: %w", err)
+	}
+
+	return query.GetDashboardStats(a.db, from, to)
+}
+
+// CommitsByHour returns per-hour commit counts between the given dates.
+// Dates should be in "2006-01-02" format.
+func (a *App) CommitsByHour(fromDate, toDate string) ([]query.HourBucket, error) {
+	if a.db == nil {
+		return nil, fmt.Errorf("no repository open")
+	}
+
+	from, err := time.Parse("2006-01-02", fromDate)
+	if err != nil {
+		return nil, fmt.Errorf("parsing from date: %w", err)
+	}
+	to, err := time.Parse("2006-01-02", toDate)
+	if err != nil {
+		return nil, fmt.Errorf("parsing to date: %w", err)
+	}
+
+	return query.CommitsByHour(a.db, from, to)
 }
 
 // addToGitExclude adds a pattern to .git/info/exclude if it's not already present.
