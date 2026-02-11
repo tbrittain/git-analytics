@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { onMounted, ref } from 'vue'
 import { CommitHeatmap } from '../../wailsjs/go/main/App'
+import { formatDate } from '../composables/useDateRange'
 
 const cells = ref<{ date: string; count: number; dayOfWeek: number }[]>([])
 const months = ref<{ label: string; col: number }[]>([])
@@ -8,13 +9,6 @@ const error = ref('')
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const DAY_LABELS = ['', 'Mon', '', 'Wed', '', 'Fri', '']
-
-function formatDate(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
 
 function colorForCount(count: number): string {
   if (count === 0) return '#161b22'
@@ -166,10 +160,11 @@ onMounted(async () => {
 
 .heatmap-scroll {
   overflow-x: auto;
+  text-align: center;
 }
 
 .heatmap-wrapper {
-  display: flex;
+  display: inline-flex;
   gap: 4px;
 }
 
@@ -228,7 +223,7 @@ onMounted(async () => {
   align-items: center;
   gap: 4px;
   margin-top: 8px;
-  justify-content: flex-end;
+  justify-content: center;
 }
 
 .legend-label {

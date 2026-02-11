@@ -1,4 +1,5 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
+import ContributorsPage from './pages/ContributorsPage.vue'
 import HomePage from './pages/HomePage.vue'
 import HotspotsPage from './pages/HotspotsPage.vue'
 
@@ -7,6 +8,7 @@ const router = createRouter({
   routes: [
     { path: '/', component: HomePage },
     { path: '/hotspots', component: HotspotsPage },
+    { path: '/contributors', component: ContributorsPage },
   ],
 })
 

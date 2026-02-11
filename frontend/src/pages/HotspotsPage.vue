@@ -4,9 +4,13 @@ import { TreemapChart } from 'echarts/charts'
 import { TooltipComponent } from 'echarts/components'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
-import { onMounted, ref, watch } from 'vue'
+import { inject, onMounted, type Ref, ref, watch } from 'vue'
 import VChart from 'vue-echarts'
 import { FileHotspots } from '../../wailsjs/go/main/App'
+import DateRangeSelector from '../components/DateRangeSelector.vue'
+import ExcludeFilter from '../components/ExcludeFilter.vue'
+import { useDateRange } from '../composables/useDateRange'
+import { useExcludePatterns } from '../composables/useExcludePatterns'
 
 use([TreemapChart, TooltipComponent, CanvasRenderer])
 
@@ -23,30 +27,13 @@ type TreemapFormatterParams = {
   treeAncestors?: TreePathEntry[]
 }
 
-type Preset = {
-  label: string
-  days: number | null // null = all time
-}
+const repoPath = inject<Ref<string>>('repoPath', ref(''))
+const { patterns, addPattern, removePattern } = useExcludePatterns(repoPath)
+const { presets, activePreset, customFrom, customTo, fromStr, toStr, setPreset } = useDateRange()
 
-const presets: Preset[] = [
-  { label: '30d', days: 30 },
-  { label: '90d', days: 90 },
-  { label: '6mo', days: 182 },
-  { label: '1yr', days: 365 },
-  { label: 'All', days: null },
-]
-
-const activePreset = ref(2) // default 6mo
 const loading = ref(false)
 const error = ref('')
 const chartOption = ref<EChartsOption | null>(null)
-
-function formatDate(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
 
 type TreeNode = {
   name: string
@@ -127,25 +114,12 @@ function buildTree(
 }
 
 async function fetchData() {
+  if (!fromStr.value || !toStr.value) return
   loading.value = true
   error.value = ''
 
   try {
-    const to = new Date()
-    to.setDate(to.getDate() + 1) // exclusive end
-    const toStr = formatDate(to)
-
-    let fromStr: string
-    const preset = presets[activePreset.value]
-    if (preset.days !== null) {
-      const from = new Date()
-      from.setDate(from.getDate() - preset.days)
-      fromStr = formatDate(from)
-    } else {
-      fromStr = '1970-01-01'
-    }
-
-    const data = await FileHotspots(fromStr, toStr)
+    const data = await FileHotspots(fromStr.value, toStr.value, patterns.value)
     if (!data || data.length === 0) {
       chartOption.value = null
       return
@@ -250,22 +224,29 @@ async function fetchData() {
 }
 
 onMounted(fetchData)
-watch(activePreset, fetchData)
+watch([fromStr, toStr], fetchData)
+watch(patterns, fetchData)
 </script>
 
 <template>
   <div class="hotspots-container">
     <div class="hotspots-header">
       <h3>Code Hotspots</h3>
-      <div class="presets">
-        <button
-          v-for="(preset, i) in presets"
-          :key="preset.label"
-          :class="['preset-btn', { active: activePreset === i }]"
-          @click="activePreset = i"
-        >
-          {{ preset.label }}
-        </button>
+      <div class="controls">
+        <ExcludeFilter
+          :patterns="patterns"
+          @add="addPattern"
+          @remove="removePattern"
+        />
+        <DateRangeSelector
+          :presets="presets"
+          :active-preset="activePreset"
+          :custom-from="customFrom"
+          :custom-to="customTo"
+          @select-preset="setPreset"
+          @update:custom-from="customFrom = $event"
+          @update:custom-to="customTo = $event"
+        />
       </div>
     </div>
 
@@ -305,29 +286,10 @@ watch(activePreset, fetchData)
   color: #c9d1d9;
 }
 
-.presets {
+.controls {
   display: flex;
-  gap: 4px;
-}
-
-.preset-btn {
-  padding: 4px 12px;
-  font-size: 12px;
-  border: 1px solid #30363d;
-  border-radius: 6px;
-  background: #21262d;
-  color: #c9d1d9;
-  cursor: pointer;
-}
-
-.preset-btn:hover {
-  background: #30363d;
-}
-
-.preset-btn.active {
-  background: #1f6feb;
-  border-color: #1f6feb;
-  color: #ffffff;
+  align-items: center;
+  gap: 8px;
 }
 
 .treemap-chart {

@@ -143,7 +143,8 @@ func (a *App) CommitHeatmap(fromDate, toDate, email string) ([]query.HeatmapDay,
 
 // FileHotspots returns per-file churn (lines changed) and commit counts
 // between the given dates. Dates should be in "2006-01-02" format.
-func (a *App) FileHotspots(fromDate, toDate string) ([]query.FileHotspot, error) {
+// Files matching any of the excludeGlobs patterns are omitted.
+func (a *App) FileHotspots(fromDate, toDate string, excludeGlobs []string) ([]query.FileHotspot, error) {
 	if a.db == nil {
 		return nil, fmt.Errorf("no repository open")
 	}
@@ -157,7 +158,27 @@ func (a *App) FileHotspots(fromDate, toDate string) ([]query.FileHotspot, error)
 		return nil, fmt.Errorf("parsing to date: %w", err)
 	}
 
-	return query.FileHotspots(a.db, from, to)
+	return query.FileHotspots(a.db, from, to, excludeGlobs)
+}
+
+// Contributors returns per-author commit counts, additions, and deletions
+// between the given dates. Dates should be in "2006-01-02" format.
+// Files matching any of the excludeGlobs patterns are excluded from stats.
+func (a *App) Contributors(fromDate, toDate string, excludeGlobs []string) ([]query.Contributor, error) {
+	if a.db == nil {
+		return nil, fmt.Errorf("no repository open")
+	}
+
+	from, err := time.Parse("2006-01-02", fromDate)
+	if err != nil {
+		return nil, fmt.Errorf("parsing from date: %w", err)
+	}
+	to, err := time.Parse("2006-01-02", toDate)
+	if err != nil {
+		return nil, fmt.Errorf("parsing to date: %w", err)
+	}
+
+	return query.Contributors(a.db, from, to, excludeGlobs)
 }
 
 // addToGitExclude adds a pattern to .git/info/exclude if it's not already present.
