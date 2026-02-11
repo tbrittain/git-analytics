@@ -160,10 +160,11 @@ onMounted(async () => {
 
 .heatmap-scroll {
   overflow-x: auto;
+  text-align: center;
 }
 
 .heatmap-wrapper {
-  display: flex;
+  display: inline-flex;
   gap: 4px;
 }
 
@@ -222,7 +223,7 @@ onMounted(async () => {
   align-items: center;
   gap: 4px;
   margin-top: 8px;
-  justify-content: flex-end;
+  justify-content: center;
 }
 
 .legend-label {
