@@ -16,21 +16,27 @@ type Contributor struct {
 
 // Contributors returns per-author commit counts, additions, and deletions
 // for commits between from (inclusive) and to (exclusive), ordered by
-// commits descending.
-func Contributors(db *sql.DB, from, to time.Time) ([]Contributor, error) {
-	rows, err := db.Query(
-		`SELECT c.author_email,
-		        MAX(c.author_name) AS author_name,
-		        COUNT(DISTINCT c.hash) AS commits,
-		        COALESCE(SUM(fs.additions), 0) AS additions,
-		        COALESCE(SUM(fs.deletions), 0) AS deletions
-		 FROM commits c
-		 LEFT JOIN file_stats fs ON fs.commit_hash = c.hash
-		 WHERE c.committed_at >= ? AND c.committed_at < ?
-		 GROUP BY c.author_email
-		 ORDER BY commits DESC`,
-		from, to,
-	)
+// commits descending. Files matching any of the excludeGlobs patterns are
+// excluded from the additions/deletions totals but commits still count.
+func Contributors(db *sql.DB, from, to time.Time, excludeGlobs []string) ([]Contributor, error) {
+	excludeSQL, excludeArgs := buildExcludeClauses("fs.file_path", excludeGlobs)
+
+	q := `SELECT c.author_email,
+	        MAX(c.author_name) AS author_name,
+	        COUNT(DISTINCT c.hash) AS commits,
+	        COALESCE(SUM(fs.additions), 0) AS additions,
+	        COALESCE(SUM(fs.deletions), 0) AS deletions
+	 FROM commits c
+	 LEFT JOIN file_stats fs ON fs.commit_hash = c.hash` + excludeSQL + `
+	 WHERE c.committed_at >= ? AND c.committed_at < ?
+	 GROUP BY c.author_email
+	 ORDER BY commits DESC`
+
+	args := make([]any, 0, len(excludeArgs)+2)
+	args = append(args, excludeArgs...)
+	args = append(args, from, to)
+
+	rows, err := db.Query(q, args...)
 	if err != nil {
 		return nil, err
 	}

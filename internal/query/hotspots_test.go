@@ -37,7 +37,7 @@ func TestFileHotspots_Basic(t *testing.T) {
 	from := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC)
 
-	hotspots, err := query.FileHotspots(db, from, to)
+	hotspots, err := query.FileHotspots(db, from, to, nil)
 	if err != nil {
 		t.Fatalf("FileHotspots: %v", err)
 	}
@@ -78,7 +78,7 @@ func TestFileHotspots_DateFiltering(t *testing.T) {
 	from := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC)
 
-	hotspots, err := query.FileHotspots(db, from, to)
+	hotspots, err := query.FileHotspots(db, from, to, nil)
 	if err != nil {
 		t.Fatalf("FileHotspots: %v", err)
 	}
@@ -91,13 +91,38 @@ func TestFileHotspots_DateFiltering(t *testing.T) {
 	}
 }
 
+func TestFileHotspots_ExcludeGlobs(t *testing.T) {
+	db := setupDB(t)
+
+	insertCommit(t, db, "aaa1", "Alice", "alice@example.com",
+		time.Date(2025, 1, 15, 10, 0, 0, 0, time.UTC), "first")
+
+	insertFileStat(t, db, "aaa1", "main.go", 10, 5)
+	insertFileStat(t, db, "aaa1", "generated.pb.go", 200, 0)
+
+	from := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC)
+
+	hotspots, err := query.FileHotspots(db, from, to, []string{"*.pb.go"})
+	if err != nil {
+		t.Fatalf("FileHotspots: %v", err)
+	}
+
+	if len(hotspots) != 1 {
+		t.Fatalf("expected 1 hotspot, got %d: %v", len(hotspots), hotspots)
+	}
+	if hotspots[0].Path != "main.go" {
+		t.Errorf("expected main.go, got %s", hotspots[0].Path)
+	}
+}
+
 func TestFileHotspots_Empty(t *testing.T) {
 	db := setupDB(t)
 
 	from := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC)
 
-	hotspots, err := query.FileHotspots(db, from, to)
+	hotspots, err := query.FileHotspots(db, from, to, nil)
 	if err != nil {
 		t.Fatalf("FileHotspots: %v", err)
 	}

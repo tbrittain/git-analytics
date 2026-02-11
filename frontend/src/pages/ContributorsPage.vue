@@ -1,7 +1,9 @@
 <script lang="ts" setup>
-import { onMounted, ref, watch } from 'vue'
+import { inject, onMounted, type Ref, ref, watch } from 'vue'
 import { Contributors } from '../../wailsjs/go/main/App'
 import type { query } from '../../wailsjs/go/models'
+import ExcludeFilter from '../components/ExcludeFilter.vue'
+import { useExcludePatterns } from '../composables/useExcludePatterns'
 
 type Preset = {
   label: string
@@ -15,6 +17,9 @@ const presets: Preset[] = [
   { label: '1yr', days: 365 },
   { label: 'All', days: null },
 ]
+
+const repoPath = inject<Ref<string>>('repoPath', ref(''))
+const { patterns, addPattern, removePattern } = useExcludePatterns(repoPath)
 
 const activePreset = ref(2) // default 6mo
 const loading = ref(false)
@@ -51,7 +56,7 @@ async function fetchData() {
       fromStr = '1970-01-01'
     }
 
-    const data = await Contributors(fromStr, toStr)
+    const data = await Contributors(fromStr, toStr, patterns.value)
     contributors.value = data || []
   } catch (e: unknown) {
     error.value = e instanceof Error ? e.message : String(e)
@@ -62,21 +67,29 @@ async function fetchData() {
 
 onMounted(fetchData)
 watch(activePreset, fetchData)
+watch(patterns, fetchData)
 </script>
 
 <template>
   <div class="contributors-container">
     <div class="contributors-header">
       <h3>Contributors</h3>
-      <div class="presets">
-        <button
-          v-for="(preset, i) in presets"
-          :key="preset.label"
-          :class="['preset-btn', { active: activePreset === i }]"
-          @click="activePreset = i"
-        >
-          {{ preset.label }}
-        </button>
+      <div class="controls">
+        <ExcludeFilter
+          :patterns="patterns"
+          @add="addPattern"
+          @remove="removePattern"
+        />
+        <div class="presets">
+          <button
+            v-for="(preset, i) in presets"
+            :key="preset.label"
+            :class="['preset-btn', { active: activePreset === i }]"
+            @click="activePreset = i"
+          >
+            {{ preset.label }}
+          </button>
+        </div>
       </div>
     </div>
 
@@ -133,6 +146,12 @@ watch(activePreset, fetchData)
   font-size: 16px;
   font-weight: 600;
   color: #c9d1d9;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .presets {

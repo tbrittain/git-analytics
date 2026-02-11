@@ -1,9 +1,10 @@
 <script lang="ts" setup>
-import { ref } from 'vue'
+import { provide, ref } from 'vue'
 import { OpenRepository, SelectDirectory } from '../wailsjs/go/main/App'
 import RepoSelector from './components/RepoSelector.vue'
 
 const repoPath = ref('')
+provide('repoPath', repoPath)
 const loading = ref(false)
 const error = ref('')
 const repoReady = ref(false)

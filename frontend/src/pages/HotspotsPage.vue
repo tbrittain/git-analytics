@@ -4,9 +4,11 @@ import { TreemapChart } from 'echarts/charts'
 import { TooltipComponent } from 'echarts/components'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
-import { onMounted, ref, watch } from 'vue'
+import { inject, onMounted, type Ref, ref, watch } from 'vue'
 import VChart from 'vue-echarts'
 import { FileHotspots } from '../../wailsjs/go/main/App'
+import ExcludeFilter from '../components/ExcludeFilter.vue'
+import { useExcludePatterns } from '../composables/useExcludePatterns'
 
 use([TreemapChart, TooltipComponent, CanvasRenderer])
 
@@ -35,6 +37,9 @@ const presets: Preset[] = [
   { label: '1yr', days: 365 },
   { label: 'All', days: null },
 ]
+
+const repoPath = inject<Ref<string>>('repoPath', ref(''))
+const { patterns, addPattern, removePattern } = useExcludePatterns(repoPath)
 
 const activePreset = ref(2) // default 6mo
 const loading = ref(false)
@@ -145,7 +150,7 @@ async function fetchData() {
       fromStr = '1970-01-01'
     }
 
-    const data = await FileHotspots(fromStr, toStr)
+    const data = await FileHotspots(fromStr, toStr, patterns.value)
     if (!data || data.length === 0) {
       chartOption.value = null
       return
@@ -251,21 +256,29 @@ async function fetchData() {
 
 onMounted(fetchData)
 watch(activePreset, fetchData)
+watch(patterns, fetchData)
 </script>
 
 <template>
   <div class="hotspots-container">
     <div class="hotspots-header">
       <h3>Code Hotspots</h3>
-      <div class="presets">
-        <button
-          v-for="(preset, i) in presets"
-          :key="preset.label"
-          :class="['preset-btn', { active: activePreset === i }]"
-          @click="activePreset = i"
-        >
-          {{ preset.label }}
-        </button>
+      <div class="controls">
+        <ExcludeFilter
+          :patterns="patterns"
+          @add="addPattern"
+          @remove="removePattern"
+        />
+        <div class="presets">
+          <button
+            v-for="(preset, i) in presets"
+            :key="preset.label"
+            :class="['preset-btn', { active: activePreset === i }]"
+            @click="activePreset = i"
+          >
+            {{ preset.label }}
+          </button>
+        </div>
       </div>
     </div>
 
@@ -303,6 +316,12 @@ watch(activePreset, fetchData)
   font-size: 16px;
   font-weight: 600;
   color: #c9d1d9;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .presets {

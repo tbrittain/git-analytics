@@ -26,7 +26,7 @@ func TestContributors_Basic(t *testing.T) {
 	from := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC)
 
-	contributors, err := query.Contributors(db, from, to)
+	contributors, err := query.Contributors(db, from, to, nil)
 	if err != nil {
 		t.Fatalf("Contributors: %v", err)
 	}
@@ -57,7 +57,7 @@ func TestContributors_CommitWithoutFileStats(t *testing.T) {
 	from := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC)
 
-	contributors, err := query.Contributors(db, from, to)
+	contributors, err := query.Contributors(db, from, to, nil)
 	if err != nil {
 		t.Fatalf("Contributors: %v", err)
 	}
@@ -87,7 +87,7 @@ func TestContributors_DateFiltering(t *testing.T) {
 	from := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC)
 
-	contributors, err := query.Contributors(db, from, to)
+	contributors, err := query.Contributors(db, from, to, nil)
 	if err != nil {
 		t.Fatalf("Contributors: %v", err)
 	}
@@ -100,13 +100,47 @@ func TestContributors_DateFiltering(t *testing.T) {
 	}
 }
 
+func TestContributors_ExcludeGlobs(t *testing.T) {
+	db := setupDB(t)
+
+	// 1 author, 2 commits each touching main.go + package-lock.json
+	insertCommit(t, db, "aaa1", "Alice", "alice@example.com",
+		time.Date(2025, 1, 15, 10, 0, 0, 0, time.UTC), "first")
+	insertCommit(t, db, "aaa2", "Alice", "alice@example.com",
+		time.Date(2025, 1, 16, 12, 0, 0, 0, time.UTC), "second")
+
+	insertFileStat(t, db, "aaa1", "main.go", 10, 5)
+	insertFileStat(t, db, "aaa1", "package-lock.json", 100, 50)
+	insertFileStat(t, db, "aaa2", "main.go", 20, 10)
+	insertFileStat(t, db, "aaa2", "package-lock.json", 200, 100)
+
+	from := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC)
+
+	contributors, err := query.Contributors(db, from, to, []string{"package-lock.json"})
+	if err != nil {
+		t.Fatalf("Contributors: %v", err)
+	}
+
+	if len(contributors) != 1 {
+		t.Fatalf("expected 1 contributor, got %d: %v", len(contributors), contributors)
+	}
+
+	c := contributors[0]
+	// Commits should still be 2 (LEFT JOIN keeps commits even with excluded files)
+	// Additions only from main.go: 10+20=30, Deletions: 5+10=15
+	if c.Commits != 2 || c.Additions != 30 || c.Deletions != 15 {
+		t.Errorf("got %+v, want {commits:2, additions:30, deletions:15}", c)
+	}
+}
+
 func TestContributors_Empty(t *testing.T) {
 	db := setupDB(t)
 
 	from := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC)
 
-	contributors, err := query.Contributors(db, from, to)
+	contributors, err := query.Contributors(db, from, to, nil)
 	if err != nil {
 		t.Fatalf("Contributors: %v", err)
 	}

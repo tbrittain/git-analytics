@@ -16,21 +16,27 @@ type FileHotspot struct {
 
 // FileHotspots returns per-file churn (additions + deletions) and commit counts
 // for commits between from (inclusive) and to (exclusive), ordered by
-// lines_changed descending.
-func FileHotspots(db *sql.DB, from, to time.Time) ([]FileHotspot, error) {
-	rows, err := db.Query(
-		`SELECT fs.file_path,
-		        SUM(fs.additions + fs.deletions) AS lines_changed,
-		        SUM(fs.additions) AS additions,
-		        SUM(fs.deletions) AS deletions,
-		        COUNT(DISTINCT fs.commit_hash) AS commits
-		 FROM file_stats fs
-		 JOIN commits c ON c.hash = fs.commit_hash
-		 WHERE c.committed_at >= ? AND c.committed_at < ?
-		 GROUP BY fs.file_path
-		 ORDER BY lines_changed DESC`,
-		from, to,
-	)
+// lines_changed descending. Files matching any of the excludeGlobs patterns
+// are omitted from results entirely.
+func FileHotspots(db *sql.DB, from, to time.Time, excludeGlobs []string) ([]FileHotspot, error) {
+	excludeSQL, excludeArgs := buildExcludeClauses("fs.file_path", excludeGlobs)
+
+	q := `SELECT fs.file_path,
+	        SUM(fs.additions + fs.deletions) AS lines_changed,
+	        SUM(fs.additions) AS additions,
+	        SUM(fs.deletions) AS deletions,
+	        COUNT(DISTINCT fs.commit_hash) AS commits
+	 FROM file_stats fs
+	 JOIN commits c ON c.hash = fs.commit_hash
+	 WHERE c.committed_at >= ? AND c.committed_at < ?` + excludeSQL + `
+	 GROUP BY fs.file_path
+	 ORDER BY lines_changed DESC`
+
+	args := make([]any, 0, len(excludeArgs)+2)
+	args = append(args, from, to)
+	args = append(args, excludeArgs...)
+
+	rows, err := db.Query(q, args...)
 	if err != nil {
 		return nil, err
 	}
