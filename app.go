@@ -12,6 +12,7 @@ import (
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 	_ "modernc.org/sqlite"
 
+	"git-analytics/internal/config"
 	"git-analytics/internal/git"
 	"git-analytics/internal/indexer"
 	"git-analytics/internal/query"
@@ -21,10 +22,11 @@ import (
 
 // App struct
 type App struct {
-	ctx   context.Context
-	repo  git.Repository
-	store store.Store
-	db    *sql.DB
+	ctx       context.Context
+	repo      git.Repository
+	store     store.Store
+	db        *sql.DB
+	configDir string
 }
 
 // NewApp creates a new App application struct
@@ -36,6 +38,9 @@ func NewApp() *App {
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	if dir, err := config.DefaultConfigDir(); err == nil {
+		a.configDir = dir
+	}
 }
 
 // SelectDirectory opens a native OS folder picker and returns the selected path.
@@ -119,7 +124,46 @@ func (a *App) OpenRepository(path string) error {
 		return fmt.Errorf("indexing: %w", err)
 	}
 
+	// Persist this repo in the recent list.
+	if a.configDir != "" {
+		cfg, _ := config.Load(a.configDir)
+		cfg.AddRecent(path, repo.RepoName())
+		_ = cfg.Save(a.configDir)
+	}
+
 	return nil
+}
+
+// RecentRepos returns the list of recently opened repositories.
+func (a *App) RecentRepos() ([]config.RecentRepo, error) {
+	if a.configDir == "" {
+		return nil, fmt.Errorf("config directory unavailable")
+	}
+	cfg, err := config.Load(a.configDir)
+	if err != nil {
+		return nil, err
+	}
+	// Filter out repos whose paths no longer exist on disk.
+	valid := make([]config.RecentRepo, 0, len(cfg.RecentRepos))
+	for _, r := range cfg.RecentRepos {
+		if _, err := os.Stat(r.Path); err == nil {
+			valid = append(valid, r)
+		}
+	}
+	return valid, nil
+}
+
+// RemoveRecentRepo removes a repository from the recent list.
+func (a *App) RemoveRecentRepo(path string) error {
+	if a.configDir == "" {
+		return fmt.Errorf("config directory unavailable")
+	}
+	cfg, err := config.Load(a.configDir)
+	if err != nil {
+		return err
+	}
+	cfg.RemoveRecent(path)
+	return cfg.Save(a.configDir)
 }
 
 // CommitHeatmap returns per-day commit counts between the given dates.
