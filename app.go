@@ -85,7 +85,7 @@ func (a *App) OpenRepository(path string) error {
 		a.db = nil
 	}
 
-	repo, err := git.Open(path)
+	repo, err := git.NativeOpen(path)
 	if err != nil {
 		return fmt.Errorf("opening repository: %w", err)
 	}
