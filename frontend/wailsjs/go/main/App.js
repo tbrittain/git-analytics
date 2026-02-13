@@ -34,6 +34,14 @@ export function OpenRepository(arg1) {
   return window['go']['main']['App']['OpenRepository'](arg1);
 }
 
+export function RecentRepos() {
+  return window['go']['main']['App']['RecentRepos']();
+}
+
+export function RemoveRecentRepo(arg1) {
+  return window['go']['main']['App']['RemoveRecentRepo'](arg1);
+}
+
 export function RepoInfo() {
   return window['go']['main']['App']['RepoInfo']();
 }

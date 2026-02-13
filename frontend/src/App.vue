@@ -2,6 +2,7 @@
 import { provide, ref } from 'vue'
 import { OpenRepository, SelectDirectory } from '../wailsjs/go/main/App'
 import RepoSelector from './components/RepoSelector.vue'
+import RecentReposList from './components/RecentReposList.vue'
 
 const repoPath = ref('')
 provide('repoPath', repoPath)
@@ -13,6 +14,22 @@ async function onSelectRepo() {
   const path = await SelectDirectory()
   if (!path) return
 
+  repoPath.value = path
+  loading.value = true
+  error.value = ''
+  repoReady.value = false
+
+  try {
+    await OpenRepository(path)
+    repoReady.value = true
+  } catch (e: unknown) {
+    error.value = e instanceof Error ? e.message : String(e)
+  } finally {
+    loading.value = false
+  }
+}
+
+async function onOpenRecent(path: string) {
   repoPath.value = path
   loading.value = true
   error.value = ''
@@ -55,7 +72,7 @@ async function onSelectRepo() {
         {{ error }}
       </div>
       <div v-else-if="!repoReady" class="status welcome">
-        Open a Git repository to get started.
+        <RecentReposList @select="onOpenRecent" />
       </div>
       <router-view v-else :key="repoPath" />
     </main>
