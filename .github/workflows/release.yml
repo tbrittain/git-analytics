@@ -74,9 +74,11 @@ jobs:
 
       - name: Generate version
         id: version
+        shell: bash
         run: echo "tag=v$(date -u +%Y.%m.%d).${{ github.run_number }}" >> "$GITHUB_OUTPUT"
 
       - name: Build
+        shell: bash
         run: wails build -platform ${{ matrix.platform }} ${{ matrix.build-flags }} -ldflags "-X main.Version=${{ steps.version.outputs.tag }}"
 
       - name: Zip artifact (Windows)
