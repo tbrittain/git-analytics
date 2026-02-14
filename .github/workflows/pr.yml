@@ -25,8 +25,14 @@ jobs:
       - name: Install Linux dependencies
         run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
 
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci
+
+      - name: Lint frontend
+        run: cd frontend && npm run lint
+
       - name: Build frontend
-        run: cd frontend && npm ci && npm run build
+        run: cd frontend && npm run build
 
       - name: Run Go tests
         run: go test ./...
