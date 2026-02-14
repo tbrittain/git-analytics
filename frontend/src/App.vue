@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { onMounted, provide, ref } from 'vue'
-import logoUrl from './assets/images/logo.png'
 import { CheckForUpdate, OpenRepository, SelectDirectory, Version } from '../wailsjs/go/main/App'
+import logoUrl from './assets/images/logo.png'
 import RecentReposList from './components/RecentReposList.vue'
 import RepoSelector from './components/RepoSelector.vue'
 
