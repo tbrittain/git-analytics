@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { onMounted, provide, ref } from 'vue'
-import { OpenRepository, SelectDirectory, Version } from '../wailsjs/go/main/App'
+import { CheckForUpdate, OpenRepository, SelectDirectory, Version } from '../wailsjs/go/main/App'
 import RepoSelector from './components/RepoSelector.vue'
 import RecentReposList from './components/RecentReposList.vue'
 
@@ -10,9 +10,20 @@ const loading = ref(false)
 const error = ref('')
 const repoReady = ref(false)
 const appVersion = ref('')
+const updateURL = ref('')
+const updateTag = ref('')
 
 onMounted(async () => {
   appVersion.value = await Version()
+  try {
+    const info = await CheckForUpdate()
+    if (info.available) {
+      updateTag.value = info.tag
+      updateURL.value = info.url
+    }
+  } catch {
+    // Silently ignore update check failures
+  }
 })
 
 async function onSelectRepo() {
@@ -83,7 +94,11 @@ async function onOpenRecent(path: string) {
     </main>
     <footer v-if="appVersion">
       <a href="https://github.com/tbrittain/git-analytics" target="_blank" rel="noopener">Git Analytics</a>
+      <span class="separator">·</span>
       <span>{{ appVersion }}</span>
+      <a v-if="updateURL" :href="updateURL" target="_blank" rel="noopener" class="update-link">
+        Update available: {{ updateTag }}
+      </a>
     </footer>
   </div>
 </template>
@@ -151,8 +166,8 @@ main {
 
 footer {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 8px;
   padding: 8px 20px;
   border-top: 1px solid #30363d;
   color: #8b949e;
@@ -168,6 +183,19 @@ footer a {
 footer a:hover {
   color: #c9d1d9;
   text-decoration: underline;
+}
+
+.separator {
+  color: #30363d;
+}
+
+.update-link {
+  margin-left: auto;
+  color: #58a6ff;
+}
+
+.update-link:hover {
+  color: #79c0ff;
 }
 
 .status {

@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -38,6 +40,57 @@ func NewApp(version string) *App {
 // Version returns the application version string.
 func (a *App) Version() string {
 	return a.version
+}
+
+// UpdateInfo holds information about an available update.
+type UpdateInfo struct {
+	Available bool   `json:"available"`
+	Tag       string `json:"tag"`
+	URL       string `json:"url"`
+}
+
+// CheckForUpdate queries GitHub for the latest release and returns update
+// info if a newer version is available. Returns Available=false on any error
+// or if already up to date.
+func (a *App) CheckForUpdate() UpdateInfo {
+	if a.version == "dev" {
+		return UpdateInfo{}
+	}
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	req, err := http.NewRequest("GET", "https://api.github.com/repos/tbrittain/git-analytics/releases/latest", nil)
+	if err != nil {
+		return UpdateInfo{}
+	}
+	req.Header.Set("User-Agent", "git-analytics/"+a.version)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return UpdateInfo{}
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return UpdateInfo{}
+	}
+
+	var release struct {
+		TagName string `json:"tag_name"`
+		HTMLURL string `json:"html_url"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
+		return UpdateInfo{}
+	}
+
+	if release.TagName == "" || release.TagName == a.version {
+		return UpdateInfo{}
+	}
+
+	return UpdateInfo{
+		Available: true,
+		Tag:       release.TagName,
+		URL:       release.HTMLURL,
+	}
 }
 
 // startup is called when the app starts. The context is saved
