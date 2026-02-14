@@ -1,6 +1,6 @@
 <script lang="ts" setup>
-import { provide, ref } from 'vue'
-import { OpenRepository, SelectDirectory } from '../wailsjs/go/main/App'
+import { onMounted, provide, ref } from 'vue'
+import { CheckForUpdate, OpenRepository, SelectDirectory, Version } from '../wailsjs/go/main/App'
 import RepoSelector from './components/RepoSelector.vue'
 import RecentReposList from './components/RecentReposList.vue'
 
@@ -9,6 +9,22 @@ provide('repoPath', repoPath)
 const loading = ref(false)
 const error = ref('')
 const repoReady = ref(false)
+const appVersion = ref('')
+const updateURL = ref('')
+const updateTag = ref('')
+
+onMounted(async () => {
+  appVersion.value = await Version()
+  try {
+    const info = await CheckForUpdate()
+    if (info.available) {
+      updateTag.value = info.tag
+      updateURL.value = info.url
+    }
+  } catch {
+    // Silently ignore update check failures
+  }
+})
 
 async function onSelectRepo() {
   const path = await SelectDirectory()
@@ -76,6 +92,14 @@ async function onOpenRecent(path: string) {
       </div>
       <router-view v-else :key="repoPath" />
     </main>
+    <footer v-if="appVersion">
+      <a href="https://github.com/tbrittain/git-analytics" target="_blank" rel="noopener">Git Analytics</a>
+      <span class="separator">·</span>
+      <span>{{ appVersion }}</span>
+      <a v-if="updateURL" :href="updateURL" target="_blank" rel="noopener" class="update-link">
+        Update available: {{ updateTag }}
+      </a>
+    </footer>
   </div>
 </template>
 
@@ -138,6 +162,40 @@ main {
   display: flex;
   flex-direction: column;
   min-height: 0;
+}
+
+footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 20px;
+  border-top: 1px solid #30363d;
+  color: #8b949e;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+footer a {
+  color: #8b949e;
+  text-decoration: none;
+}
+
+footer a:hover {
+  color: #c9d1d9;
+  text-decoration: underline;
+}
+
+.separator {
+  color: #30363d;
+}
+
+.update-link {
+  margin-left: auto;
+  color: #58a6ff;
+}
+
+.update-link:hover {
+  color: #79c0ff;
 }
 
 .status {

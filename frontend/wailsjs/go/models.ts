@@ -64,6 +64,22 @@ export namespace main {
 	        this.last_commit_age = source["last_commit_age"];
 	    }
 	}
+	export class UpdateInfo {
+	    available: boolean;
+	    tag: string;
+	    url: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.available = source["available"];
+	        this.tag = source["tag"];
+	        this.url = source["url"];
+	    }
+	}
 
 }
 
