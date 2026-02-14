@@ -111,13 +111,24 @@ function buildTree(items: OwnershipItem[]): { tree: TreeNode[]; stats: Map<strin
   function aggregate(node: TreeNode, pathParts: string[]): NodeStats {
     if (!node.children || node.children.length === 0) {
       const key = pathParts.join('/')
-      return stats.get(key) || {
-        totalLines: 0, topAuthorName: '', topAuthorPct: 0,
-        secondAuthorName: '', secondAuthorPct: 0,
-        contributorCount: 0, fileCount: 0, highRiskCount: 0, minContributors: Infinity,
-      }
+      return (
+        stats.get(key) || {
+          totalLines: 0,
+          topAuthorName: '',
+          topAuthorPct: 0,
+          secondAuthorName: '',
+          secondAuthorPct: 0,
+          contributorCount: 0,
+          fileCount: 0,
+          highRiskCount: 0,
+          minContributors: Infinity,
+        }
+      )
     }
-    let totalLines = 0, fileCount = 0, highRiskCount = 0, minContrib = Infinity
+    let totalLines = 0,
+      fileCount = 0,
+      highRiskCount = 0,
+      minContrib = Infinity
     for (const child of node.children) {
       const s = aggregate(child, [...pathParts, child.name])
       totalLines += s.totalLines
@@ -139,9 +150,14 @@ function buildTree(items: OwnershipItem[]): { tree: TreeNode[]; stats: Map<strin
     node.value = [totalLines, avgPct]
     const key = pathParts.join('/')
     const dirStats: NodeStats = {
-      totalLines, topAuthorName: '', topAuthorPct: avgPct,
-      secondAuthorName: '', secondAuthorPct: 0,
-      contributorCount: 0, fileCount, highRiskCount,
+      totalLines,
+      topAuthorName: '',
+      topAuthorPct: avgPct,
+      secondAuthorName: '',
+      secondAuthorPct: 0,
+      contributorCount: 0,
+      fileCount,
+      highRiskCount,
       minContributors: minContrib === Infinity ? 0 : minContrib,
     }
     stats.set(key, dirStats)
@@ -172,7 +188,10 @@ async function fetchData() {
         formatter(params) {
           const info = params as TreemapFormatterParams
           const treePath = info.treePathInfo ?? []
-          const fullPath = treePath.slice(1).map((n) => n.name).join('/')
+          const fullPath = treePath
+            .slice(1)
+            .map((n) => n.name)
+            .join('/')
           const s = stats.get(fullPath)
           if (!s) return `<b>${info.name}</b>`
 
@@ -189,14 +208,11 @@ async function fetchData() {
 
           // File tooltip
           let html =
-            `<b>${fullPath || info.name}</b><br/>` +
-            `Top: ${s.topAuthorName} (${s.topAuthorPct.toFixed(1)}%)<br/>`
+            `<b>${fullPath || info.name}</b><br/>` + `Top: ${s.topAuthorName} (${s.topAuthorPct.toFixed(1)}%)<br/>`
           if (s.secondAuthorName) {
             html += `2nd: ${s.secondAuthorName} (${s.secondAuthorPct.toFixed(1)}%)<br/>`
           }
-          html +=
-            `Contributors: ${s.contributorCount}<br/>` +
-            `Lines changed: ${s.totalLines.toLocaleString()}`
+          html += `Contributors: ${s.contributorCount}<br/>` + `Lines changed: ${s.totalLines.toLocaleString()}`
           return html
         },
       },

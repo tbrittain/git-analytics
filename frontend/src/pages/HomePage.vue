@@ -67,11 +67,11 @@ onMounted(async () => {
       tooltip: {
         trigger: 'axis',
         axisPointer: { type: 'shadow' },
-        formatter(params: any) {
+        formatter(params: unknown) {
           const p = Array.isArray(params) ? params[0] : params
-          const h = p.dataIndex
-          const label = `${String(h).padStart(2, '0')}:00`
-          return `${label}<br/>${p.value} commit${p.value === 1 ? '' : 's'}`
+          const item = p as { dataIndex: number; value: number }
+          const label = `${String(item.dataIndex).padStart(2, '0')}:00`
+          return `${label}<br/>${item.value} commit${item.value === 1 ? '' : 's'}`
         },
       },
       grid: {

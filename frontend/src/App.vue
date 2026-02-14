@@ -1,8 +1,8 @@
 <script lang="ts" setup>
 import { onMounted, provide, ref } from 'vue'
 import { CheckForUpdate, OpenRepository, SelectDirectory, Version } from '../wailsjs/go/main/App'
-import RepoSelector from './components/RepoSelector.vue'
 import RecentReposList from './components/RecentReposList.vue'
+import RepoSelector from './components/RepoSelector.vue'
 
 const repoPath = ref('')
 provide('repoPath', repoPath)
