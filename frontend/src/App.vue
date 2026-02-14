@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { onMounted, provide, ref } from 'vue'
+import logoUrl from './assets/images/logo.png'
 import { CheckForUpdate, OpenRepository, SelectDirectory, Version } from '../wailsjs/go/main/App'
 import RecentReposList from './components/RecentReposList.vue'
 import RepoSelector from './components/RepoSelector.vue'
@@ -65,7 +66,10 @@ async function onOpenRecent(path: string) {
 <template>
   <div id="layout">
     <header>
-      <h1>Git Analytics</h1>
+      <div class="brand">
+        <img :src="logoUrl" alt="" class="header-icon" />
+        <h1>Git Analytics</h1>
+      </div>
       <RepoSelector
         :repo-path="repoPath"
         :loading="loading"
@@ -117,6 +121,17 @@ header {
   padding: 12px 20px;
   border-bottom: 1px solid #30363d;
   flex-shrink: 0;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-icon {
+  width: 24px;
+  height: 24px;
 }
 
 header h1 {
