@@ -4,7 +4,7 @@ import { TreemapChart } from 'echarts/charts'
 import { TooltipComponent, VisualMapComponent } from 'echarts/components'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
-import { inject, onMounted, type Ref, ref, watch } from 'vue'
+import { computed, inject, onMounted, type Ref, ref, watch } from 'vue'
 import VChart from 'vue-echarts'
 import { FileHotspots, TemporalHotspots } from '../../wailsjs/go/main/App'
 import DateRangeSelector from '../components/DateRangeSelector.vue'
@@ -36,6 +36,14 @@ const error = ref('')
 const chartOption = ref<EChartsOption | null>(null)
 const mode = ref<'total' | 'recency' | 'movers'>('total')
 const movers = ref<{ path: string; lines_changed: number; additions: number; deletions: number; commits: number }[]>([])
+
+type SortKey = 'lines_changed' | 'additions' | 'deletions'
+const sortKey = ref<SortKey>('lines_changed')
+
+const sortedMovers = computed(() => {
+  const key = sortKey.value
+  return [...movers.value].sort((a, b) => b[key] - a[key])
+})
 
 type TreeNode = {
   name: string
@@ -497,13 +505,19 @@ watch(patterns, fetchData)
             <tr>
               <th class="col-rank">#</th>
               <th class="col-file">File</th>
-              <th class="col-num">Lines Changed</th>
-              <th class="col-num">Additions</th>
-              <th class="col-num">Deletions</th>
+              <th class="col-num sortable" @click="sortKey = 'lines_changed'">
+                Lines Changed <span v-if="sortKey === 'lines_changed'" class="sort-indicator">&#x25BC;</span>
+              </th>
+              <th class="col-num sortable" @click="sortKey = 'additions'">
+                Additions <span v-if="sortKey === 'additions'" class="sort-indicator">&#x25BC;</span>
+              </th>
+              <th class="col-num sortable" @click="sortKey = 'deletions'">
+                Deletions <span v-if="sortKey === 'deletions'" class="sort-indicator">&#x25BC;</span>
+              </th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(f, i) in movers" :key="f.path">
+            <tr v-for="(f, i) in sortedMovers" :key="f.path">
               <td class="col-rank">{{ i + 1 }}</td>
               <td class="col-file">{{ f.path }}</td>
               <td class="col-num">{{ f.lines_changed.toLocaleString() }}</td>
@@ -674,5 +688,19 @@ th.col-num {
 
 .deletions {
   color: #f85149;
+}
+
+.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.sortable:hover {
+  color: #c9d1d9;
+}
+
+.sort-indicator {
+  font-size: 10px;
+  margin-left: 2px;
 }
 </style>
