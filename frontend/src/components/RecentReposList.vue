@@ -11,7 +11,7 @@ const repos = ref<config.RecentRepo[]>([])
 
 onMounted(async () => {
   try {
-    repos.value = await RecentRepos() ?? []
+    repos.value = (await RecentRepos()) ?? []
   } catch {
     repos.value = []
   }
@@ -20,7 +20,7 @@ onMounted(async () => {
 async function remove(path: string) {
   try {
     await RemoveRecentRepo(path)
-    repos.value = repos.value.filter(r => r.path !== path)
+    repos.value = repos.value.filter((r) => r.path !== path)
   } catch {
     // ignore
   }

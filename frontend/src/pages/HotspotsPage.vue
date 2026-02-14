@@ -4,7 +4,7 @@ import { TreemapChart } from 'echarts/charts'
 import { TooltipComponent, VisualMapComponent } from 'echarts/components'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
-import { inject, onMounted, type Ref, ref, watch } from 'vue'
+import { computed, inject, onMounted, type Ref, ref, watch } from 'vue'
 import VChart from 'vue-echarts'
 import { FileHotspots, TemporalHotspots } from '../../wailsjs/go/main/App'
 import DateRangeSelector from '../components/DateRangeSelector.vue'
@@ -34,7 +34,16 @@ const { presets, activePreset, customFrom, customTo, fromStr, toStr, setPreset }
 const loading = ref(false)
 const error = ref('')
 const chartOption = ref<EChartsOption | null>(null)
-const mode = ref<'total' | 'recency'>('total')
+const mode = ref<'total' | 'recency' | 'movers'>('total')
+const movers = ref<{ path: string; lines_changed: number; additions: number; deletions: number; commits: number }[]>([])
+
+type SortKey = 'lines_changed' | 'additions' | 'deletions'
+const sortKey = ref<SortKey>('lines_changed')
+
+const sortedMovers = computed(() => {
+  const key = sortKey.value
+  return [...movers.value].sort((a, b) => b[key] - a[key])
+})
 
 type TreeNode = {
   name: string
@@ -226,6 +235,13 @@ async function fetchData() {
   error.value = ''
 
   try {
+    if (mode.value === 'movers') {
+      const data = await FileHotspots(fromStr.value, toStr.value, patterns.value)
+      movers.value = data || []
+      chartOption.value = null
+      return
+    }
+
     if (mode.value === 'recency') {
       const data = await TemporalHotspots(fromStr.value, toStr.value, 90, patterns.value)
       if (!data || data.length === 0) {
@@ -455,6 +471,12 @@ watch(patterns, fetchData)
           >
             Churn x Recency
           </button>
+          <button
+            :class="['mode-btn', { active: mode === 'movers' }]"
+            @click="mode = 'movers'"
+          >
+            Top Movers
+          </button>
         </div>
         <ExcludeFilter
           :patterns="patterns"
@@ -475,13 +497,46 @@ watch(patterns, fetchData)
 
     <div v-if="loading" class="hotspots-status">Loading...</div>
     <div v-else-if="error" class="hotspots-status hotspots-error">{{ error }}</div>
-    <div v-else-if="!chartOption" class="hotspots-status">No file changes found in this time range.</div>
-    <v-chart
-      v-else
-      class="treemap-chart"
-      :option="chartOption"
-      autoresize
-    />
+    <template v-else-if="mode === 'movers'">
+      <div v-if="movers.length === 0" class="hotspots-status">No file changes found in this time range.</div>
+      <div v-else class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th class="col-rank">#</th>
+              <th class="col-file">File</th>
+              <th class="col-num sortable" @click="sortKey = 'lines_changed'">
+                Lines Changed <span v-if="sortKey === 'lines_changed'" class="sort-indicator">&#x25BC;</span>
+              </th>
+              <th class="col-num sortable" @click="sortKey = 'additions'">
+                Additions <span v-if="sortKey === 'additions'" class="sort-indicator">&#x25BC;</span>
+              </th>
+              <th class="col-num sortable" @click="sortKey = 'deletions'">
+                Deletions <span v-if="sortKey === 'deletions'" class="sort-indicator">&#x25BC;</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(f, i) in sortedMovers" :key="f.path">
+              <td class="col-rank">{{ i + 1 }}</td>
+              <td class="col-file">{{ f.path }}</td>
+              <td class="col-num">{{ f.lines_changed.toLocaleString() }}</td>
+              <td class="col-num additions">+{{ f.additions.toLocaleString() }}</td>
+              <td class="col-num deletions">-{{ f.deletions.toLocaleString() }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </template>
+    <template v-else>
+      <div v-if="!chartOption" class="hotspots-status">No file changes found in this time range.</div>
+      <v-chart
+        v-else
+        class="treemap-chart"
+        :option="chartOption"
+        autoresize
+      />
+    </template>
   </div>
 </template>
 
@@ -532,8 +587,8 @@ watch(patterns, fetchData)
   transition: background 0.15s, color 0.15s;
 }
 
-.mode-btn:first-child {
-  border-right: 1px solid #30363d;
+.mode-btn + .mode-btn {
+  border-left: 1px solid #30363d;
 }
 
 .mode-btn.active {
@@ -560,5 +615,92 @@ watch(patterns, fetchData)
 
 .hotspots-error {
   color: #f85149;
+}
+
+.table-wrapper {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+th {
+  background: #161b22;
+  color: #8b949e;
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid #30363d;
+}
+
+td {
+  padding: 8px 12px;
+  color: #c9d1d9;
+  border-bottom: 1px solid #21262d;
+}
+
+tr:hover td {
+  background: #161b22;
+}
+
+.col-rank {
+  width: 48px;
+  text-align: center;
+  color: #8b949e;
+}
+
+th.col-rank {
+  text-align: center;
+}
+
+.col-file {
+  font-family: monospace;
+  font-size: 12px;
+}
+
+.col-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+th.col-num {
+  text-align: right;
+}
+
+.additions {
+  color: #3fb950;
+}
+
+.deletions {
+  color: #f85149;
+}
+
+.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.sortable:hover {
+  color: #c9d1d9;
+}
+
+.sort-indicator {
+  font-size: 10px;
+  margin-left: 2px;
 }
 </style>

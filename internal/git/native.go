@@ -20,6 +20,7 @@ type nativeRepo struct {
 // NativeOpen opens an existing git repository using the native git CLI.
 func NativeOpen(path string) (Repository, error) {
 	cmd := exec.Command("git", "-C", path, "rev-parse", "--git-dir")
+	hideWindow(cmd)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return nil, fmt.Errorf("not a git repository (or git not installed): %s", strings.TrimSpace(string(out)))
 	}
@@ -32,6 +33,7 @@ func (r *nativeRepo) RepoName() string {
 
 func (r *nativeRepo) CurrentBranch() string {
 	cmd := exec.Command("git", "-C", r.path, "symbolic-ref", "--short", "HEAD")
+	hideWindow(cmd)
 	out, err := cmd.Output()
 	if err != nil {
 		return "HEAD"
@@ -41,6 +43,7 @@ func (r *nativeRepo) CurrentBranch() string {
 
 func (r *nativeRepo) HeadHash() (string, error) {
 	cmd := exec.Command("git", "-C", r.path, "rev-parse", "HEAD")
+	hideWindow(cmd)
 	out, err := cmd.Output()
 	if err != nil {
 		return "", fmt.Errorf("rev-parse HEAD: %w", err)
@@ -59,6 +62,7 @@ func (r *nativeRepo) Log(sinceHash string) (CommitIter, error) {
 	}
 
 	cmd := exec.Command("git", args...)
+	hideWindow(cmd)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return nil, fmt.Errorf("creating stdout pipe: %w", err)
