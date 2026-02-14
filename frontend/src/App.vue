@@ -1,6 +1,6 @@
 <script lang="ts" setup>
-import { provide, ref } from 'vue'
-import { OpenRepository, SelectDirectory } from '../wailsjs/go/main/App'
+import { onMounted, provide, ref } from 'vue'
+import { OpenRepository, SelectDirectory, Version } from '../wailsjs/go/main/App'
 import RepoSelector from './components/RepoSelector.vue'
 import RecentReposList from './components/RecentReposList.vue'
 
@@ -9,6 +9,11 @@ provide('repoPath', repoPath)
 const loading = ref(false)
 const error = ref('')
 const repoReady = ref(false)
+const appVersion = ref('')
+
+onMounted(async () => {
+  appVersion.value = await Version()
+})
 
 async function onSelectRepo() {
   const path = await SelectDirectory()
@@ -76,6 +81,7 @@ async function onOpenRecent(path: string) {
       </div>
       <router-view v-else :key="repoPath" />
     </main>
+    <footer v-if="appVersion">{{ appVersion }}</footer>
   </div>
 </template>
 
@@ -138,6 +144,15 @@ main {
   display: flex;
   flex-direction: column;
   min-height: 0;
+}
+
+footer {
+  padding: 8px 20px;
+  border-top: 1px solid #30363d;
+  color: #8b949e;
+  font-size: 12px;
+  text-align: right;
+  flex-shrink: 0;
 }
 
 .status {

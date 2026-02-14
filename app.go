@@ -27,11 +27,17 @@ type App struct {
 	store     store.Store
 	db        *sql.DB
 	configDir string
+	version   string
 }
 
 // NewApp creates a new App application struct
-func NewApp() *App {
-	return &App{}
+func NewApp(version string) *App {
+	return &App{version: version}
+}
+
+// Version returns the application version string.
+func (a *App) Version() string {
+	return a.version
 }
 
 // startup is called when the app starts. The context is saved
