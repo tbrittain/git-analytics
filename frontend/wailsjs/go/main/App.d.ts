@@ -29,3 +29,5 @@ export function RepoInfo():Promise<main.RepoInfo>;
 export function SelectDirectory():Promise<string>;
 
 export function TemporalHotspots(arg1:string,arg2:string,arg3:number,arg4:Array<string>):Promise<Array<query.TemporalHotspot>>;
+
+export function Version():Promise<string>;

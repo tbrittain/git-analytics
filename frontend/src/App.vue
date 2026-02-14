@@ -81,7 +81,10 @@ async function onOpenRecent(path: string) {
       </div>
       <router-view v-else :key="repoPath" />
     </main>
-    <footer v-if="appVersion">{{ appVersion }}</footer>
+    <footer v-if="appVersion">
+      <a href="https://github.com/tbrittain/git-analytics" target="_blank" rel="noopener">Git Analytics</a>
+      <span>{{ appVersion }}</span>
+    </footer>
   </div>
 </template>
 
@@ -147,12 +150,24 @@ main {
 }
 
 footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   padding: 8px 20px;
   border-top: 1px solid #30363d;
   color: #8b949e;
   font-size: 12px;
-  text-align: right;
   flex-shrink: 0;
+}
+
+footer a {
+  color: #8b949e;
+  text-decoration: none;
+}
+
+footer a:hover {
+  color: #c9d1d9;
+  text-decoration: underline;
 }
 
 .status {

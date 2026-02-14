@@ -53,3 +53,7 @@ export function SelectDirectory() {
 export function TemporalHotspots(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['TemporalHotspots'](arg1, arg2, arg3, arg4);
 }
+
+export function Version() {
+  return window['go']['main']['App']['Version']();
+}
