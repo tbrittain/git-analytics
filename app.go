@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 	_ "modernc.org/sqlite"
 
 	"git-analytics/internal/config"
@@ -100,18 +99,6 @@ func (a *App) startup(ctx context.Context) {
 	if dir, err := config.DefaultConfigDir(); err == nil {
 		a.configDir = dir
 	}
-}
-
-// SelectDirectory opens a native OS folder picker and returns the selected path.
-// Returns an empty string if the user cancels or an error occurs.
-func (a *App) SelectDirectory() string {
-	path, err := wailsRuntime.OpenDirectoryDialog(a.ctx, wailsRuntime.OpenDialogOptions{
-		Title: "Select Git Repository",
-	})
-	if err != nil {
-		return ""
-	}
-	return path
 }
 
 // shutdown is called when the app is closing.
