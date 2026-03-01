@@ -1,0 +1,38 @@
+# Default: auto-detect text files and normalize to LF in the repo
+* text=auto eol=lf
+
+# Source code
+*.go    text eol=lf
+*.ts    text eol=lf
+*.js    text eol=lf
+*.vue   text eol=lf
+*.html  text eol=lf
+*.css   text eol=lf
+
+# Config / data
+*.json  text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.mod   text eol=lf
+*.sum   text eol=lf
+*.toml  text eol=lf
+
+# Docs / text
+*.md    text eol=lf
+*.txt   text eol=lf
+
+# Windows build assets (keep CRLF on Windows checkout for tooling compatibility)
+*.nsi      text eol=crlf
+*.nsh      text eol=crlf
+*.manifest text eol=crlf
+*.plist    text eol=lf
+
+# Binary files — no line ending conversion
+*.png   binary
+*.ico   binary
+*.icns  binary
+*.woff2 binary
+*.woff  binary
+*.ttf   binary
+*.otf   binary
+*.md5   binary
