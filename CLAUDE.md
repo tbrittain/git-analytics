@@ -18,9 +18,13 @@ Primary dependencies for core functionality:
 ## Development
 
 ```sh
-wails dev      # Run in dev mode with hot reload
-wails build    # Build for current platform
+make dev       # Run in dev mode with hot reload
+make build     # Build for current platform
 ```
+
+> The Makefile checks `pkg-config` at build time and automatically applies `-tags webkit2_41`
+> if `webkit2gtk-4.0` is not available (e.g. Ubuntu 24.04+). On other platforms or Linux
+> distros that still ship 4.0, no tag is applied.
 
 Frontend dependencies:
 ```sh
