@@ -7,7 +7,8 @@ CREATE TABLE IF NOT EXISTS commits (
 	author_name  VARCHAR NOT NULL,
 	author_email VARCHAR NOT NULL,
 	committed_at TIMESTAMP NOT NULL,
-	message      VARCHAR NOT NULL
+	message      VARCHAR NOT NULL,
+	description  TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS file_stats (

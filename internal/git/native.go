@@ -54,7 +54,7 @@ func (r *nativeRepo) HeadHash() (string, error) {
 func (r *nativeRepo) Log(sinceHash string) (CommitIter, error) {
 	args := []string{
 		"-C", r.path, "log",
-		"--format=GITANALYTICS_COMMIT%n%H%n%aN%n%aE%n%aI%n%s",
+		"--format=GITANALYTICS_COMMIT%n%H%n%aN%n%aE%n%aI%n%s%n%b%nGITANALYTICS_ENDMETA",
 		"--numstat",
 	}
 	if sinceHash != "" {
@@ -138,6 +138,20 @@ func (it *nativeCommitIter) Next() (*Commit, error) {
 		return nil, fmt.Errorf("parsing date %q: %w", meta[3], err)
 	}
 
+	// Read description lines until the end marker.
+	var descLines []string
+	for {
+		line, ok := it.nextLine()
+		if !ok {
+			return nil, fmt.Errorf("unexpected end of git log output (expected GITANALYTICS_ENDMETA)")
+		}
+		if line == "GITANALYTICS_ENDMETA" {
+			break
+		}
+		descLines = append(descLines, line)
+	}
+	description := strings.TrimSpace(strings.Join(descLines, "\n"))
+
 	// Read numstat lines until next sentinel or EOF.
 	var files []FileStat
 	for {
@@ -167,6 +181,7 @@ func (it *nativeCommitIter) Next() (*Commit, error) {
 		AuthorEmail:  meta[2],
 		Date:         date,
 		Message:      meta[4],
+		Description:  description,
 		FilesChanged: files,
 	}, nil
 }

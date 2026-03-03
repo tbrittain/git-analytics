@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io"
 	"path/filepath"
+	"strings"
 
 	gogit "github.com/go-git/go-git/v6"
 	"github.com/go-git/go-git/v6/plumbing"
@@ -121,12 +122,17 @@ func (it *goGitCommitIter) Next() (*Commit, error) {
 			}
 		}
 
+		subject, body, _ := strings.Cut(c.Message, "\n\n")
+		subject = strings.TrimRight(subject, "\n")
+		description := strings.TrimSpace(body)
+
 		return &Commit{
 			Hash:         c.Hash.String(),
 			AuthorName:   c.Author.Name,
 			AuthorEmail:  c.Author.Email,
 			Date:         c.Author.When,
-			Message:      c.Message,
+			Message:      subject,
+			Description:  description,
 			FilesChanged: files,
 		}, nil
 	}

@@ -36,8 +36,13 @@ func NewFromDB(db *sql.DB) store.Store {
 }
 
 func (s *sqliteStore) Init() error {
-	_, err := s.db.Exec(store.SchemaSQL)
-	return err
+	if _, err := s.db.Exec(store.SchemaSQL); err != nil {
+		return err
+	}
+	// Migrate existing databases: adds the description column if absent.
+	// SQLite returns an error when the column already exists; we ignore it.
+	_, _ = s.db.Exec(`ALTER TABLE commits ADD COLUMN description TEXT NOT NULL DEFAULT ''`)
+	return nil
 }
 
 func (s *sqliteStore) InsertCommits(commits []git.Commit) error {
@@ -48,8 +53,8 @@ func (s *sqliteStore) InsertCommits(commits []git.Commit) error {
 	defer tx.Rollback()
 
 	commitStmt, err := tx.Prepare(
-		`INSERT OR IGNORE INTO commits (hash, author_name, author_email, committed_at, message)
-		 VALUES (?, ?, ?, ?, ?)`)
+		`INSERT OR IGNORE INTO commits (hash, author_name, author_email, committed_at, message, description)
+		 VALUES (?, ?, ?, ?, ?, ?)`)
 	if err != nil {
 		return err
 	}
@@ -64,7 +69,7 @@ func (s *sqliteStore) InsertCommits(commits []git.Commit) error {
 	defer fileStmt.Close()
 
 	for _, c := range commits {
-		_, err := commitStmt.Exec(c.Hash, c.AuthorName, c.AuthorEmail, c.Date, c.Message)
+		_, err := commitStmt.Exec(c.Hash, c.AuthorName, c.AuthorEmail, c.Date, c.Message, c.Description)
 		if err != nil {
 			return err
 		}

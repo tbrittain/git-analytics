@@ -142,6 +142,52 @@ func TestNativeLogSinceHash(t *testing.T) {
 	}
 }
 
+func TestNativeDescription(t *testing.T) {
+	repoPath := initTestRepoWithDesc(t)
+
+	repo, err := git.NativeOpen(repoPath)
+	if err != nil {
+		t.Fatalf("NativeOpen: %v", err)
+	}
+	defer repo.Close()
+
+	iter, err := repo.Log("")
+	if err != nil {
+		t.Fatalf("Log: %v", err)
+	}
+	defer iter.Close()
+
+	var commits []git.Commit
+	for {
+		c, err := iter.Next()
+		if err != nil {
+			t.Fatalf("Next: %v", err)
+		}
+		if c == nil {
+			break
+		}
+		commits = append(commits, *c)
+	}
+
+	if len(commits) != 2 {
+		t.Fatalf("expected 2 commits, got %d", len(commits))
+	}
+
+	// Log returns newest first; commits[0] has the description.
+	withDesc := commits[0]
+	simple := commits[1]
+
+	if withDesc.Message != "commit with description" {
+		t.Errorf("expected subject %q, got %q", "commit with description", withDesc.Message)
+	}
+	if withDesc.Description != "This is the description body." {
+		t.Errorf("expected description %q, got %q", "This is the description body.", withDesc.Description)
+	}
+	if simple.Description != "" {
+		t.Errorf("expected empty description for subject-only commit, got %q", simple.Description)
+	}
+}
+
 func TestNativeHeadHash(t *testing.T) {
 	repoPath := initTestRepo(t)
 
