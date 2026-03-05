@@ -166,6 +166,98 @@ func TestHeadHash(t *testing.T) {
 	}
 }
 
+// initTestRepoWithDesc creates a temporary git repository with 2 commits,
+// the second of which includes a description body, for testing description parsing.
+func initTestRepoWithDesc(t *testing.T) string {
+	t.Helper()
+
+	dir := t.TempDir()
+
+	run := func(args ...string) {
+		t.Helper()
+		cmd := exec.Command(args[0], args[1:]...)
+		cmd.Dir = dir
+		cmd.Env = append(os.Environ(),
+			"GIT_AUTHOR_NAME=Test User",
+			"GIT_AUTHOR_EMAIL=test@example.com",
+			"GIT_COMMITTER_NAME=Test User",
+			"GIT_COMMITTER_EMAIL=test@example.com",
+		)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("command %v failed: %v\n%s", args, err, out)
+		}
+	}
+
+	run("git", "init")
+	run("git", "config", "user.name", "Test User")
+	run("git", "config", "user.email", "test@example.com")
+
+	// First commit: subject only, no description.
+	if err := os.WriteFile(filepath.Join(dir, "hello.txt"), []byte("hello\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	run("git", "add", "hello.txt")
+	run("git", "commit", "-m", "simple commit")
+
+	time.Sleep(time.Second)
+
+	// Second commit: subject + description body.
+	if err := os.WriteFile(filepath.Join(dir, "hello.txt"), []byte("hello world\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	run("git", "add", "hello.txt")
+	run("git", "commit", "-m", "commit with description", "-m", "This is the description body.")
+
+	return dir
+}
+
+func TestGoGitDescription(t *testing.T) {
+	repoPath := initTestRepoWithDesc(t)
+
+	repo, err := git.Open(repoPath)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer repo.Close()
+
+	iter, err := repo.Log("")
+	if err != nil {
+		t.Fatalf("Log: %v", err)
+	}
+	defer iter.Close()
+
+	var commits []git.Commit
+	for {
+		c, err := iter.Next()
+		if err != nil {
+			t.Fatalf("Next: %v", err)
+		}
+		if c == nil {
+			break
+		}
+		commits = append(commits, *c)
+	}
+
+	if len(commits) != 2 {
+		t.Fatalf("expected 2 commits, got %d", len(commits))
+	}
+
+	// Log returns newest first; commits[0] has the description.
+	withDesc := commits[0]
+	simple := commits[1]
+
+	if withDesc.Message != "commit with description" {
+		t.Errorf("expected subject %q, got %q", "commit with description", withDesc.Message)
+	}
+	if withDesc.Description != "This is the description body." {
+		t.Errorf("expected description %q, got %q", "This is the description body.", withDesc.Description)
+	}
+	if simple.Description != "" {
+		t.Errorf("expected empty description for subject-only commit, got %q", simple.Description)
+	}
+}
+
 // initTestRepo creates a temporary git repository with 2 commits for testing.
 func initTestRepo(t *testing.T) string {
 	t.Helper()

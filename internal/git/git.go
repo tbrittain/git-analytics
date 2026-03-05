@@ -8,7 +8,8 @@ type Commit struct {
 	AuthorName   string
 	AuthorEmail  string
 	Date         time.Time
-	Message      string
+	Message      string // subject line (first line of the commit message)
+	Description  string // body (everything after the first blank line)
 	FilesChanged []FileStat
 }
 
