@@ -15,8 +15,9 @@ type DashboardStats struct {
 }
 
 // GetDashboardStats returns aggregate commit and file-change stats between
-// from (inclusive) and to (exclusive).
-func GetDashboardStats(db *sql.DB, from, to time.Time) (*DashboardStats, error) {
+// from (inclusive) and to (exclusive). Files matching any of the excludeGlobs
+// patterns are omitted from file-level metrics (additions, deletions, files changed).
+func GetDashboardStats(db *sql.DB, from, to time.Time, excludeGlobs []string) (*DashboardStats, error) {
 	var s DashboardStats
 
 	err := db.QueryRow(
@@ -29,14 +30,16 @@ func GetDashboardStats(db *sql.DB, from, to time.Time) (*DashboardStats, error) 
 		return nil, err
 	}
 
+	excludeClause, excludeArgs := buildExcludeClauses("fs.file_path", excludeGlobs)
+	args := append([]any{from, to}, excludeArgs...)
 	err = db.QueryRow(
 		`SELECT COALESCE(SUM(fs.additions), 0),
 		        COALESCE(SUM(fs.deletions), 0),
 		        COUNT(DISTINCT fs.file_path)
 		 FROM file_stats fs
 		 JOIN commits c ON c.hash = fs.commit_hash
-		 WHERE c.committed_at >= ? AND c.committed_at < ?`,
-		from, to,
+		 WHERE c.committed_at >= ? AND c.committed_at < ?`+excludeClause,
+		args...,
 	).Scan(&s.Additions, &s.Deletions, &s.FilesChanged)
 	if err != nil {
 		return nil, err

@@ -423,7 +423,8 @@ func relativeTime(t time.Time) string {
 
 // DashboardStats returns aggregate commit and file-change stats between the
 // given dates. Dates should be in "2006-01-02" format.
-func (a *App) DashboardStats(fromDate, toDate string) (*query.DashboardStats, error) {
+// Files matching any of the excludeGlobs patterns are omitted from file-level metrics.
+func (a *App) DashboardStats(fromDate, toDate string, excludeGlobs []string) (*query.DashboardStats, error) {
 	if a.db == nil {
 		return nil, fmt.Errorf("no repository open")
 	}
@@ -437,7 +438,7 @@ func (a *App) DashboardStats(fromDate, toDate string) (*query.DashboardStats, er
 		return nil, fmt.Errorf("parsing to date: %w", err)
 	}
 
-	return query.GetDashboardStats(a.db, from, to)
+	return query.GetDashboardStats(a.db, from, to, excludeGlobs)
 }
 
 // CommitsByHour returns per-hour commit counts between the given dates.
