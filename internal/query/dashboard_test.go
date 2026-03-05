@@ -22,7 +22,7 @@ func TestGetDashboardStats_Basic(t *testing.T) {
 	from := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC)
 
-	s, err := query.GetDashboardStats(db, from, to)
+	s, err := query.GetDashboardStats(db, from, to, nil)
 	if err != nil {
 		t.Fatalf("GetDashboardStats: %v", err)
 	}
@@ -50,7 +50,7 @@ func TestGetDashboardStats_Empty(t *testing.T) {
 	from := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC)
 
-	s, err := query.GetDashboardStats(db, from, to)
+	s, err := query.GetDashboardStats(db, from, to, nil)
 	if err != nil {
 		t.Fatalf("GetDashboardStats: %v", err)
 	}
@@ -76,7 +76,7 @@ func TestGetDashboardStats_DateFiltering(t *testing.T) {
 	from := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC)
 
-	s, err := query.GetDashboardStats(db, from, to)
+	s, err := query.GetDashboardStats(db, from, to, nil)
 	if err != nil {
 		t.Fatalf("GetDashboardStats: %v", err)
 	}
@@ -86,6 +86,38 @@ func TestGetDashboardStats_DateFiltering(t *testing.T) {
 	}
 	if s.Additions != 10 {
 		t.Errorf("Additions: got %d, want 10", s.Additions)
+	}
+}
+
+func TestGetDashboardStats_ExcludeGlobs(t *testing.T) {
+	db := setupDB(t)
+
+	insertCommit(t, db, "aaa1", "Alice", "alice@example.com",
+		time.Date(2025, 1, 15, 10, 0, 0, 0, time.UTC), "first")
+	insertFileStat(t, db, "aaa1", "main.go", 10, 5)
+	insertFileStat(t, db, "aaa1", "vendor/lib.go", 100, 50)
+
+	from := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC)
+
+	s, err := query.GetDashboardStats(db, from, to, []string{"vendor/*"})
+	if err != nil {
+		t.Fatalf("GetDashboardStats: %v", err)
+	}
+
+	// Commit count is unaffected by file exclusions
+	if s.Commits != 1 {
+		t.Errorf("Commits: got %d, want 1", s.Commits)
+	}
+	// File-level stats exclude vendor/lib.go
+	if s.Additions != 10 {
+		t.Errorf("Additions: got %d, want 10", s.Additions)
+	}
+	if s.Deletions != 5 {
+		t.Errorf("Deletions: got %d, want 5", s.Deletions)
+	}
+	if s.FilesChanged != 1 {
+		t.Errorf("FilesChanged: got %d, want 1", s.FilesChanged)
 	}
 }
 

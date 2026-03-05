@@ -22,8 +22,8 @@ export function Contributors(arg1, arg2, arg3) {
   return window['go']['main']['App']['Contributors'](arg1, arg2, arg3);
 }
 
-export function DashboardStats(arg1, arg2) {
-  return window['go']['main']['App']['DashboardStats'](arg1, arg2);
+export function DashboardStats(arg1, arg2, arg3) {
+  return window['go']['main']['App']['DashboardStats'](arg1, arg2, arg3);
 }
 
 export function FileHotspots(arg1, arg2, arg3) {

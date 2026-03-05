@@ -4,13 +4,18 @@ import { BarChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
-import { onMounted, ref } from 'vue'
+import { inject, onMounted, type Ref, ref, watch } from 'vue'
 import VChart from 'vue-echarts'
 import { CommitsByHour, DashboardStats, RepoInfo } from '../../wailsjs/go/main/App'
 import CommitHeatmap from '../components/CommitHeatmap.vue'
+import ExcludeFilter from '../components/ExcludeFilter.vue'
 import { formatDate } from '../composables/useDateRange'
+import { useExcludePatterns } from '../composables/useExcludePatterns'
 
 use([BarChart, GridComponent, TooltipComponent, CanvasRenderer])
+
+const repoPath = inject<Ref<string>>('repoPath', ref(''))
+const { patterns, addPattern, removePattern } = useExcludePatterns(repoPath)
 
 const repoInfo = ref<{
   name: string
@@ -36,6 +41,78 @@ function formatNumber(n: number): string {
   return n.toLocaleString()
 }
 
+async function loadStats(fromStr: string, toStr: string) {
+  const [dashStats, hourData] = await Promise.all([
+    DashboardStats(fromStr, toStr, patterns.value),
+    CommitsByHour(fromStr, toStr),
+  ])
+
+  stats.value = dashStats
+
+  // Build full 24-hour array from sparse data
+  const counts = new Array(24).fill(0)
+  if (hourData) {
+    for (const b of hourData) {
+      counts[b.hour] = b.count
+    }
+  }
+
+  chartOption.value = {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      formatter(params: unknown) {
+        const p = Array.isArray(params) ? params[0] : params
+        const item = p as { dataIndex: number; value: number }
+        const label = `${String(item.dataIndex).padStart(2, '0')}:00`
+        return `${label}<br/>${item.value} commit${item.value === 1 ? '' : 's'}`
+      },
+    },
+    grid: {
+      left: 40,
+      right: 16,
+      top: 8,
+      bottom: 24,
+    },
+    xAxis: {
+      type: 'category',
+      data: Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}`),
+      axisLabel: {
+        color: '#8b949e',
+        fontSize: 11,
+        interval: 2,
+      },
+      axisLine: { lineStyle: { color: '#30363d' } },
+      axisTick: { show: false },
+    },
+    yAxis: {
+      type: 'value',
+      minInterval: 1,
+      axisLabel: { color: '#8b949e', fontSize: 11 },
+      splitLine: { lineStyle: { color: '#21262d' } },
+    },
+    series: [
+      {
+        type: 'bar',
+        data: counts,
+        itemStyle: { color: '#58a6ff', borderRadius: [2, 2, 0, 0] },
+        barMaxWidth: 20,
+      },
+    ],
+  }
+}
+
+let fromStr = ''
+let toStr = ''
+
+watch(patterns, () => {
+  if (fromStr && toStr) {
+    loadStats(fromStr, toStr).catch((e: unknown) => {
+      error.value = e instanceof Error ? e.message : String(e)
+    })
+  }
+})
+
 onMounted(async () => {
   try {
     const to = new Date()
@@ -43,69 +120,12 @@ onMounted(async () => {
     const from = new Date()
     from.setDate(from.getDate() - 29) // 30 days including today
 
-    const fromStr = formatDate(from)
-    const toStr = formatDate(to)
+    fromStr = formatDate(from)
+    toStr = formatDate(to)
 
-    const [info, dashStats, hourData] = await Promise.all([
-      RepoInfo(),
-      DashboardStats(fromStr, toStr),
-      CommitsByHour(fromStr, toStr),
-    ])
+    const [info] = await Promise.all([RepoInfo(), loadStats(fromStr, toStr)])
 
     repoInfo.value = info
-    stats.value = dashStats
-
-    // Build full 24-hour array from sparse data
-    const counts = new Array(24).fill(0)
-    if (hourData) {
-      for (const b of hourData) {
-        counts[b.hour] = b.count
-      }
-    }
-
-    chartOption.value = {
-      tooltip: {
-        trigger: 'axis',
-        axisPointer: { type: 'shadow' },
-        formatter(params: unknown) {
-          const p = Array.isArray(params) ? params[0] : params
-          const item = p as { dataIndex: number; value: number }
-          const label = `${String(item.dataIndex).padStart(2, '0')}:00`
-          return `${label}<br/>${item.value} commit${item.value === 1 ? '' : 's'}`
-        },
-      },
-      grid: {
-        left: 40,
-        right: 16,
-        top: 8,
-        bottom: 24,
-      },
-      xAxis: {
-        type: 'category',
-        data: Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}`),
-        axisLabel: {
-          color: '#8b949e',
-          fontSize: 11,
-          interval: 2,
-        },
-        axisLine: { lineStyle: { color: '#30363d' } },
-        axisTick: { show: false },
-      },
-      yAxis: {
-        type: 'value',
-        minInterval: 1,
-        axisLabel: { color: '#8b949e', fontSize: 11 },
-        splitLine: { lineStyle: { color: '#21262d' } },
-      },
-      series: [
-        {
-          type: 'bar',
-          data: counts,
-          itemStyle: { color: '#58a6ff', borderRadius: [2, 2, 0, 0] },
-          barMaxWidth: 20,
-        },
-      ],
-    }
   } catch (e: unknown) {
     error.value = e instanceof Error ? e.message : String(e)
   }
@@ -127,6 +147,11 @@ onMounted(async () => {
         {{ repoInfo.last_author }} &middot; {{ repoInfo.last_commit_age }} &middot;
         &ldquo;{{ repoInfo.last_message }}&rdquo;
       </div>
+    </div>
+
+    <!-- Exclusion Filter -->
+    <div class="filter-row">
+      <ExcludeFilter :patterns="patterns" @add="addPattern" @remove="removePattern" />
     </div>
 
     <!-- Stat Cards -->
@@ -212,6 +237,10 @@ onMounted(async () => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.filter-row {
+  margin-bottom: 16px;
 }
 
 /* Stat Cards */

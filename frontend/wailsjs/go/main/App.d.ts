@@ -14,7 +14,7 @@ export function CommitsByHour(arg1:string,arg2:string):Promise<Array<query.HourB
 
 export function Contributors(arg1:string,arg2:string,arg3:Array<string>):Promise<Array<query.Contributor>>;
 
-export function DashboardStats(arg1:string,arg2:string):Promise<query.DashboardStats>;
+export function DashboardStats(arg1:string,arg2:string,arg3:Array<string>):Promise<query.DashboardStats>;
 
 export function FileHotspots(arg1:string,arg2:string,arg3:Array<string>):Promise<Array<query.FileHotspot>>;
 
