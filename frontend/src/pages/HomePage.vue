@@ -123,10 +123,7 @@ onMounted(async () => {
     fromStr = formatDate(from)
     toStr = formatDate(to)
 
-    const [info] = await Promise.all([
-      RepoInfo(),
-      loadStats(fromStr, toStr),
-    ])
+    const [info] = await Promise.all([RepoInfo(), loadStats(fromStr, toStr)])
 
     repoInfo.value = info
   } catch (e: unknown) {
