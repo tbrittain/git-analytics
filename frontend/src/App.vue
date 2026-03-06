@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { onMounted, provide, ref } from 'vue'
-import { CheckForUpdate, OpenRepository, SelectDirectory, Version } from '../wailsjs/go/main/App'
+import { CheckForUpdate, OpenRepository, OpenURL, SelectDirectory, Version } from '../wailsjs/go/main/App'
 import logoUrl from './assets/images/logo.png'
 import RecentReposList from './components/RecentReposList.vue'
 import RepoSelector from './components/RepoSelector.vue'
@@ -97,12 +97,12 @@ async function onOpenRecent(path: string) {
       <router-view v-else :key="repoPath" />
     </main>
     <footer v-if="appVersion">
-      <a href="https://github.com/tbrittain/git-analytics" target="_blank" rel="noopener">Git Analytics</a>
+      <button class="link-btn" @click="OpenURL('https://github.com/tbrittain/git-analytics')">Git Analytics</button>
       <span class="separator">·</span>
       <span>{{ appVersion }}</span>
-      <a v-if="updateURL" :href="updateURL" target="_blank" rel="noopener" class="update-link">
+      <button v-if="updateURL" class="link-btn update-link" @click="OpenURL(updateURL)">
         Update available: {{ updateTag }}
-      </a>
+      </button>
     </footer>
   </div>
 </template>
@@ -190,12 +190,19 @@ footer {
   flex-shrink: 0;
 }
 
-footer a {
+footer a,
+.link-btn {
   color: #8b949e;
   text-decoration: none;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
 }
 
-footer a:hover {
+footer a:hover,
+.link-btn:hover {
   color: #c9d1d9;
   text-decoration: underline;
 }

@@ -19,6 +19,8 @@ import (
 	"git-analytics/internal/query"
 	"git-analytics/internal/store"
 	sqlitestore "git-analytics/internal/store/sqlite"
+
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // App struct
@@ -39,6 +41,11 @@ func NewApp(version string) *App {
 // Version returns the application version string.
 func (a *App) Version() string {
 	return a.version
+}
+
+// OpenURL opens the given URL in the user's default browser.
+func (a *App) OpenURL(url string) {
+	runtime.BrowserOpenURL(a.ctx, url)
 }
 
 // UpdateInfo holds information about an available update.
