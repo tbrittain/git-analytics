@@ -38,6 +38,10 @@ export function OpenRepository(arg1) {
   return window['go']['main']['App']['OpenRepository'](arg1);
 }
 
+export function OpenURL(arg1) {
+  return window['go']['main']['App']['OpenURL'](arg1);
+}
+
 export function RecentRepos() {
   return window['go']['main']['App']['RecentRepos']();
 }

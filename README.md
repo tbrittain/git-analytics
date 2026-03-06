@@ -5,9 +5,9 @@
 Git Analytics is a desktop application that provides insights and visualizations for Git repositories.
 
 ## Prerequisites
-- Go 1.25
+- Go 1.26
 - Node 24
-- Wails 2.x
+- Wails 2.11.0
 
 ## Live Development
 
