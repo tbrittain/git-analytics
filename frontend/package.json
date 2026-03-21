@@ -15,7 +15,7 @@
     "echarts": "^6.0.0",
     "vue": "^3.5.29",
     "vue-echarts": "^8.0.1",
-    "vue-router": "^5.0.3"
+    "vue-router": "^5.0.4"
   },
   "devDependencies": {
     "@babel/types": "^7.29.0",
